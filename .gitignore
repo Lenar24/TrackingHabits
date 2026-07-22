@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Alembic (миграции БД)
+# migrations/versions/   # РАСКОММЕНТИРУЙТЕ, если НЕ храните миграции в Git
+
+# Docker
+.dockerignore
+
+# Переменные окружения (важно! там токены и пароли)
+.env.*
+!.env.example
+
+# Логи бота
+bot.log
