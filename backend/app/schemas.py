@@ -29,12 +29,15 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    pass
+    user_id: int
+    username: Optional[str] = None
+    chat_id: Optional[int] = None
 
 
 class User(UserBase):
     id: int
     created_at: datetime
+    chat_id: Optional[int] = None
     habits: List[Habit] = []
 
     class Config:

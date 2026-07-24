@@ -3,9 +3,11 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 import httpx
+from fastapi import FastAPI, Request, Response
+import uvicorn
 
-from maxapi import Bot, Dispatcher
-from maxapi.types import BotStarted, MessageCreated, Command, MessageCallback
+from maxapi import Bot
+from maxapi.types import MessageCreated, MessageCallback
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
 # Настройка логирования
@@ -16,14 +18,14 @@ load_dotenv()
 
 # Конфигурация
 MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN")
-# API_URL = "http://backend:8000"  # Внутри Docker-сети
-API_URL = "http://localhost:8000"  # Для доступа с хоста
+API_URL = os.getenv("API_URL", "http://backend:8000")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+if not WEBHOOK_URL:
+    raise ValueError("WEBHOOK_URL не задан в .env файле!")
 
 bot = Bot(token=MAX_BOT_TOKEN)
-dp = Dispatcher()
-
-# HTTP-клиент для запросов к API
-client = httpx.AsyncClient(timeout=30.0)
+client = httpx.AsyncClient(timeout=30.0, verify=False)
 
 
 def create_keyboard_attachment():
@@ -53,17 +55,21 @@ async def send_welcome(chat_id):
     )
 
 
-async def get_or_create_user(user_id: int, username: str = None):
+async def get_or_create_user(user_id: int, username: str = None, chat_id: int = None):
     """Получить или создать пользователя в БД"""
-    # Проверяем, есть ли пользователь
     response = await client.get(f"{API_URL}/users/{user_id}")
     if response.status_code == 200:
-        return response.json()
+        user_data = response.json()
+        if chat_id and user_data.get('chat_id') != chat_id:
+            await client.put(
+                f"{API_URL}/users/{user_id}/chat_id",
+                json={"chat_id": chat_id}
+            )
+        return user_data
 
-    # Создаём нового пользователя
     response = await client.post(
         f"{API_URL}/users/",
-        json={"user_id": user_id, "username": username}
+        json={"user_id": user_id, "username": username, "chat_id": chat_id}
     )
     if response.status_code == 200:
         return response.json()
@@ -92,158 +98,189 @@ async def add_user_habit(user_id: int, habit_name: str):
     return None
 
 
-@dp.bot_started()
-async def bot_started(event: BotStarted):
-    """Приветственное сообщение при запуске бота"""
-    logger.info(f"✅ Событие bot_started: chat_id={event.chat_id}")
-    await send_welcome(event.chat_id)
+# ============================================
+# ОБРАБОТЧИКИ СОБЫТИЙ (вручную)
+# ============================================
 
-
-@dp.message_created(Command('start'))
-async def start_command(event: MessageCreated):
-    """Обработка команды /start"""
-    chat_id = event.message.recipient.chat_id if hasattr(event.message, 'recipient') else None
-    logger.info(f"✅ Команда /start от chat_id={chat_id}")
-    if chat_id:
+async def handle_bot_started(update_data: dict):
+    """Обработчик события bot_started"""
+    try:
+        chat_id = update_data.get('chat_id')
+        user_id = update_data.get('user_id')
+        logger.info(f"✅ Событие bot_started: chat_id={chat_id}")
+        await get_or_create_user(user_id, None, chat_id)
         await send_welcome(chat_id)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в bot_started: {e}")
 
 
-@dp.message_callback()
-async def handle_callback(event: MessageCallback):
-    """Обработчик нажатий на inline-кнопки"""
-    logger.info(f"🔘 Получен callback: {event}")
+async def handle_message_created(update_data: dict):
+    """Обработчик события message_created"""
+    try:
+        message_data = update_data.get('message')
+        if not message_data:
+            return
 
-    # Получаем chat_id
-    chat_id = None
-    if hasattr(event, 'chat_id'):
-        chat_id = event.chat_id
-    elif hasattr(event, 'chat') and hasattr(event.chat, 'chat_id'):
-        chat_id = event.chat.chat_id
+        chat_id = message_data.get('recipient', {}).get('chat_id')
+        user_id = message_data.get('sender', {}).get('user_id')
+        username = message_data.get('sender', {}).get('first_name')
+        text = message_data.get('body', {}).get('text')
 
-    if not chat_id:
-        logger.error("❌ Не удалось получить chat_id в callback")
-        return
+        logger.info(f"📩 Получено сообщение от {user_id} в чат {chat_id}")
 
-    # Получаем user_id
-    user_id = None
-    if hasattr(event, 'from_user') and hasattr(event.from_user, 'user_id'):
-        user_id = event.from_user.user_id
+        if not chat_id or not user_id:
+            logger.warning("⚠️ Не удалось получить chat_id или user_id")
+            return
 
-    if not user_id:
-        logger.error("❌ Не удалось получить user_id в callback")
-        return
+        await get_or_create_user(user_id, username, chat_id)
 
-    # Получаем payload
-    payload = None
-    if hasattr(event, 'callback') and hasattr(event.callback, 'payload'):
-        payload = event.callback.payload
+        if not text:
+            return
 
-    if not payload:
-        logger.error("❌ Не удалось получить payload в callback")
-        return
+        logger.info(f"💬 Текст: {text}")
 
-    logger.info(f"🔘 Payload: {payload}")
-
-    # Создаём или получаем пользователя
-    username = event.from_user.first_name if hasattr(event, 'from_user') else None
-    await get_or_create_user(user_id, username)
-
-    # Обработка действий
-    if payload == "my_habits":
-        habits = await get_user_habits(user_id)
-        if not habits:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="📋 У вас пока нет привычек. Нажмите «➕ Добавить привычку»."
-            )
-        else:
-            habits_text = "📋 Ваши привычки:\n\n"
-            for i, habit in enumerate(habits, 1):
-                status = "✅" if habit.get("is_active", True) else "❌"
-                habits_text += f"{i}. {habit['name']} {status} ({habit.get('days_completed', 0)} дн.)\n"
-            await bot.send_message(
-                chat_id=chat_id,
-                text=habits_text
-            )
-
-    elif payload == "add_habit":
-        await bot.send_message(
-            chat_id=chat_id,
-            text="✏️ Введите название новой привычки:"
-        )
-
-
-@dp.message_created()
-async def handle_all_messages(event: MessageCreated):
-    """Универсальный обработчик для текстовых сообщений"""
-    logger.info(f"📩 Получено сообщение: {event.message}")
-
-    # Получаем chat_id
-    chat_id = None
-    if hasattr(event.message, 'recipient') and hasattr(event.message.recipient, 'chat_id'):
-        chat_id = event.message.recipient.chat_id
-    elif hasattr(event, 'chat_id'):
-        chat_id = event.chat_id
-
-    if not chat_id:
-        logger.error("❌ Не удалось получить chat_id")
-        return
-
-    # Получаем user_id
-    user_id = None
-    if hasattr(event.message, 'sender') and hasattr(event.message.sender, 'user_id'):
-        user_id = event.message.sender.user_id
-    elif hasattr(event, 'user_id'):
-        user_id = event.user_id
-
-    if not user_id:
-        logger.error("❌ Не удалось получить user_id")
-        return
-
-    # Получаем текст
-    text = None
-    if hasattr(event.message, 'body') and hasattr(event.message.body, 'text'):
-        text = event.message.body.text
-
-    # Обработка команды "Начать" или "start"
-    if text:
         if text.lower() in ["начать", "/start", "start"]:
             await send_welcome(chat_id)
             return
-    else:
-        logger.warning("⚠️ Текст не найден в сообщении")
-        return
 
-    # --- Обработка обычных текстовых сообщений (добавление привычек) ---
-    if not text or text.startswith('/'):
-        return
+        if text.startswith('/'):
+            return
 
-    # Создаём пользователя, если его нет
-    username = event.message.sender.first_name if hasattr(event.message, 'sender') else None
-    await get_or_create_user(user_id, username)
+        habit = await add_user_habit(user_id, text)
+        if habit:
+            habits_count = len(await get_user_habits(user_id))
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ Привычка «{text}» добавлена!\n"
+                     f"📋 Всего привычек: {habits_count}"
+            )
+        else:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="❌ Не удалось добавить привычку. Попробуйте позже."
+            )
+    except Exception as e:
+        logger.error(f"❌ Ошибка в message_created: {e}")
 
-    # Добавляем привычку через API
-    habit = await add_user_habit(user_id, text)
-    if habit:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=f"✅ Привычка «{text}» добавлена!\n"
-                 f"📋 Всего привычек: {len(await get_user_habits(user_id))}"
-        )
-    else:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="❌ Не удалось добавить привычку. Попробуйте позже."
-        )
+
+async def handle_message_callback(update_data: dict):
+    """Обработчик события message_callback"""
+    try:
+        callback = update_data.get('callback')
+        if not callback:
+            return
+
+        payload = callback.get('payload')
+        user_id = callback.get('user', {}).get('user_id')
+        message = update_data.get('message', {})
+        chat_id = message.get('recipient', {}).get('chat_id')
+
+        logger.info(f"🔘 Получен callback: {payload}")
+
+        if not chat_id or not user_id:
+            return
+
+        await get_or_create_user(user_id, None, chat_id)
+
+        if payload == "my_habits":
+            habits = await get_user_habits(user_id)
+            if not habits:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text="📋 У вас пока нет привычек. Нажмите «➕ Добавить привычку»."
+                )
+            else:
+                habits_text = "📋 Ваши привычки:\n\n"
+                for i, habit in enumerate(habits, 1):
+                    status = "✅" if habit.get("is_active", True) else "❌"
+                    habits_text += f"{i}. {habit['name']} {status} ({habit.get('days_completed', 0)} дн.)\n"
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=habits_text
+                )
+        elif payload == "add_habit":
+            await bot.send_message(
+                chat_id=chat_id,
+                text="✏️ Введите название новой привычки:"
+            )
+    except Exception as e:
+        logger.error(f"❌ Ошибка в message_callback: {e}")
+
+
+# ============================================
+# FASTAPI ПРИЛОЖЕНИЕ ДЛЯ WEBHOOK
+# ============================================
+
+app = FastAPI(title="Habit Tracker Bot Webhook")
+
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    """Эндпоинт для приёма вебхуков от MAX"""
+    try:
+        update_data = await request.json()
+        update_type = update_data.get('update_type')
+        logger.info(f"📨 Получен вебхук: {update_type}")
+
+        # Обрабатываем события вручную
+        if update_type == 'message_created':
+            await handle_message_created(update_data)
+        elif update_type == 'message_callback':
+            await handle_message_callback(update_data)
+        elif update_type == 'bot_started':
+            await handle_bot_started(update_data)
+        else:
+            logger.warning(f"⚠️ Неизвестный тип обновления: {update_type}")
+
+        return Response(status_code=200)
+    except Exception as e:
+        logger.error(f"❌ Ошибка обработки вебхука: {e}")
+        import traceback
+        traceback.print_exc()
+        return Response(status_code=500)
+
+
+@app.get("/health")
+async def health():
+    """Проверка здоровья сервиса"""
+    return {"status": "ok"}
+
+
+# ============================================
+# ЗАПУСК
+# ============================================
+
+async def set_webhook():
+    """Устанавливает вебхук для бота"""
+    url = "https://platform-api2.max.ru/subscriptions"
+    headers = {
+        "Authorization": f"{MAX_BOT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "url": f"{WEBHOOK_URL}",
+        "events": ["message_created", "message_callback", "bot_started"]
+    }
+
+    async with httpx.AsyncClient(verify=False) as webhook_client:
+        response = await webhook_client.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            logger.info(f"✅ Вебхук установлен: {WEBHOOK_URL}")
+        else:
+            logger.error(f"❌ Ошибка установки вебхука: {response.text}")
 
 
 async def main():
-    print("🚀 Бот запущен и готов к работе!")
-    print("📝 Логи будут отображаться ниже...")
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await client.aclose()
+    # Устанавливаем вебхук при старте
+    await set_webhook()
+
+    # Запускаем FastAPI с вебхуком
+    print("🚀 Бот запущен с Webhook!")
+    print(f"📡 Webhook URL: {WEBHOOK_URL}")
+
+    config = uvicorn.Config(app, host="0.0.0.0", port=8001, loop="asyncio")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 if __name__ == "__main__":

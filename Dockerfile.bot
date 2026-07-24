@@ -1,0 +1,24 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Устанавливаем системные зависимости (если нужны)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем Poetry
+RUN pip install poetry --no-cache-dir
+
+# Копируем файлы с зависимостями
+COPY pyproject.toml poetry.lock* ./
+
+# Устанавливаем зависимости, но НЕ сам проект (--no-root)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
+
+# Копируем исходный код проекта
+COPY bot/ ./bot/
+COPY backend/ ./backend/
+
+# Запускаем бота
+CMD ["poetry", "run", "python", "bot/main_with_api.py"]
