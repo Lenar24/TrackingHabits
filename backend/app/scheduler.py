@@ -25,18 +25,15 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
         logger.info(f"ℹ️ У пользователя {user_id} нет привычек")
         return
 
-    # Формируем сообщение
     habits_text = "📋 **Ваши привычки на сегодня:**\n\n"
     for i, habit in enumerate(habits, 1):
         status = "✅" if habit.get("is_active", True) else "❌"
-        habits_text += f"{i}. {habit['name']} {status} ({habit.get('days_completed', 0)} дн.)\n"
+        progress = f"{habit.get('days_completed', 0)}/{habit.get('max_days', 21)} дн."
+        habits_text += f"{i}. {habit['name']} {status} ({progress})\n"
+
+    # Добавляем подсказки по управлению
     habits_text += "\n\n🌟 Не забывайте отмечать выполнение привычек!"
-
-    if not habits_text or habits_text.strip() == "":
-        logger.error(f"❌ Текст сообщения пустой для пользователя {user_id}")
-        return
-
-    logger.info(f"📝 Текст для {user_id}: {habits_text[:100]}...")
+    habits_text += "\n📌 Для отметки выполнения нажмите кнопку ниже."
 
     url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
     headers = {
@@ -99,7 +96,8 @@ async def get_users_with_habits():
                             "chat_id": chat_id,
                             "habits": active_habits
                         })
-                        logger.info(f"✅ Добавлен пользователь {user_id} с {len(active_habits)} привычками, chat_id: {chat_id}")
+                        logger.info(
+                            f"✅ Добавлен пользователь {user_id} с {len(active_habits)} привычками, chat_id: {chat_id}")
                     else:
                         logger.info(f"ℹ️ У пользователя {user_id} нет активных привычек")
                 else:
@@ -132,6 +130,20 @@ async def send_daily_reminders():
     logger.info("✅ Рассылка завершена")
 
 
+def check_21_days_job():
+    """Обёртка для проверки правила 21 дня"""
+    from .database import SessionLocal
+    from .crud import check_and_update_habits
+    db = SessionLocal()
+    try:
+        result = check_and_update_habits(db)
+        logger.info(f"✅ Правило 21 дня: обновлено {result['updated']}, завершено {result['completed']}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка проверки правила 21 дня: {e}")
+    finally:
+        db.close()
+
+
 def job_function():
     import asyncio
     try:
@@ -146,15 +158,36 @@ def job_function():
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
+
+    # Утренние напоминания (9:00)
     scheduler.add_job(
         job_function,
-        trigger=CronTrigger(minute='*'),
-        id='test_reminder',
+        trigger=CronTrigger(hour=9, minute=0),
+        id='morning_reminder',
         replace_existing=True,
-        name='Тестовые напоминания'
+        name='Утренние напоминания'
     )
+
+    # Вечерние напоминания (21:00)
+    scheduler.add_job(
+        job_function,
+        trigger=CronTrigger(hour=21, minute=0),
+        id='evening_reminder',
+        replace_existing=True,
+        name='Вечерние напоминания'
+    )
+
+    # Проверка правила 21 дня (каждый день в полночь)
+    scheduler.add_job(
+        check_21_days_job,
+        trigger=CronTrigger(hour=0, minute=0),
+        id='check_21_days',
+        replace_existing=True,
+        name='Правило 21 дня'
+    )
+
     scheduler.start()
-    logger.info("✅ Планировщик запущен (каждую минуту)")
+    logger.info("✅ Планировщик запущен (ежедневно в 9:00, 21:00 и 00:00)")
     return scheduler
 
 
