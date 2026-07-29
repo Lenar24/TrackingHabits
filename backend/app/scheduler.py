@@ -4,6 +4,7 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import logging
+import pytz
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,11 @@ logger.info(f"🔑 Токен загружен: {'ДА' if BOT_TOKEN else 'НЕ�
 if BOT_TOKEN:
     logger.info(f"🔑 Длина токена: {len(BOT_TOKEN)} символов")
 
+# Создаём клиент один раз
 client = httpx.AsyncClient(timeout=30.0, verify=False)
+
+# Московский часовой пояс
+moscow_tz = pytz.timezone('Europe/Moscow')
 
 
 def create_main_keyboard():
@@ -66,6 +71,7 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
     }
 
     try:
+        logger.info(f"📤 Отправка пользователю {user_id} (chat_id: {chat_id})")
         response = await client.post(url, headers=headers, json=payload)
         if response.status_code == 200:
             logger.info(f"✅ Напоминание отправлено пользователю {user_id}")
@@ -109,6 +115,7 @@ async def get_users_with_habits():
 
 
 async def send_daily_reminders():
+    """Основная функция для отправки ежедневных напоминаний"""
     logger.info("🔄 Запуск рассылки...")
     if not BOT_TOKEN:
         logger.error("❌ Токен не найден!")
@@ -126,6 +133,7 @@ async def send_daily_reminders():
 
 
 def check_21_days_job():
+    """Обёртка для проверки правила 21 дня"""
     from .database import SessionLocal
     from .crud import check_and_update_habits
     db = SessionLocal()
@@ -139,46 +147,63 @@ def check_21_days_job():
 
 
 def job_function():
-    import asyncio
+    """Обёртка для запуска асинхронной функции с правильным event loop"""
     try:
+        # Создаём новый event loop для каждого вызова
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(send_daily_reminders())
     except Exception as e:
         logger.error(f"❌ Ошибка в job_function: {e}")
     finally:
-        loop.close()
+        # Закрываем loop только после завершения
+        if loop and not loop.is_closed():
+            loop.close()
 
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
+    # Утренние напоминания (9:00 по Москве)
     scheduler.add_job(
         job_function,
-        trigger=CronTrigger(hour=9, minute=0),
+        trigger=CronTrigger(hour=9, minute=0, timezone=moscow_tz),
         id='morning_reminder',
         replace_existing=True,
         name='Утренние напоминания'
     )
 
+    # Вечерние напоминания (21:00 по Москве)
     scheduler.add_job(
         job_function,
-        trigger=CronTrigger(hour=21, minute=0),
+        trigger=CronTrigger(hour=21, minute=0, timezone=moscow_tz),
         id='evening_reminder',
         replace_existing=True,
         name='Вечерние напоминания'
     )
 
+    # Проверка правила 21 дня (каждый день в полночь по Москве)
     scheduler.add_job(
         check_21_days_job,
-        trigger=CronTrigger(hour=0, minute=0),
+        trigger=CronTrigger(hour=0, minute=0, timezone=moscow_tz),
         id='check_21_days',
         replace_existing=True,
         name='Правило 21 дня'
     )
 
+
+    # Для теста уведомления приходят через 1 минуту, с задержкой через 2 минуты
+    # scheduler.add_job(
+    #     job_function,
+    #     trigger=CronTrigger(minute='*'),
+    #     id='test_every_minute',
+    #     replace_existing=True,
+    #     name='Тест каждую минуту'
+    # )
+
+
     scheduler.start()
-    logger.info("✅ Планировщик запущен (ежедневно в 9:00, 21:00 и 00:00)")
+    logger.info("✅ Планировщик запущен (ежедневно в 9:00 и 21:00 по Москве)")
     return scheduler
 
 

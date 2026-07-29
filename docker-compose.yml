@@ -30,6 +30,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN}
       API_URL: http://backend:8000
+      TZ: Europe/Moscow
     volumes:
       - ./backend:/app/backend
       - ./alembic.ini:/app/alembic.ini  # <-- Добавляем монтирование alembic.ini
