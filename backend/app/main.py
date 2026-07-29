@@ -90,6 +90,14 @@ def get_all_habits(user_id: int, db: Session = Depends(get_db)):
     return crud.get_habits(db, user_id=user_id, active_only=False)
 
 
+@app.get("/habits/item/{habit_id}", response_model=schemas.Habit)
+def get_habit_by_id(habit_id: int, db: Session = Depends(get_db)):
+    habit = crud.get_habit(db, habit_id)
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    return habit
+
+
 @app.put("/habits/{habit_id}", response_model=schemas.Habit)
 def update_habit(habit_id: int, habit_update: schemas.HabitUpdate, db: Session = Depends(get_db)):
     habit = crud.update_habit(db, habit_id, habit_update)
@@ -125,7 +133,6 @@ def skip_habit(habit_id: int, db: Session = Depends(get_db)):
 
 @app.post("/habits/{habit_id}/complete-early")
 def complete_habit_early(habit_id: int, db: Session = Depends(get_db)):
-    """Ручное завершение привычки (пользователь считает, что привычка сформирована)"""
     habit = crud.complete_habit_early(db, habit_id)
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
@@ -138,6 +145,14 @@ def check_21_days_rule(db: Session = Depends(get_db)):
     return result
 
 
+# ЭНДПОИНТ СТАТИСТИКИ
+
+@app.get("/habits/{user_id}/stats")
+def get_habit_stats(user_id: int, db: Session = Depends(get_db)):
+    """Получить статистику по всем привычкам пользователя"""
+    return crud.get_habit_stats(db, user_id)
+
+
 # ЭНДПОИНТЫ НАПОМИНАНИЙ
 
 @app.post("/reminders/test")
@@ -145,11 +160,3 @@ async def test_reminders():
     from .scheduler import send_daily_reminders
     await send_daily_reminders()
     return {"message": "Напоминания отправлены"}
-
-
-@app.get("/habits/item/{habit_id}", response_model=schemas.Habit)
-def get_habit_by_id(habit_id: int, db: Session = Depends(get_db)):
-    habit = crud.get_habit(db, habit_id)
-    if not habit:
-        raise HTTPException(status_code=404, detail="Habit not found")
-    return habit

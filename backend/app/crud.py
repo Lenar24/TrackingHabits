@@ -90,22 +90,24 @@ def mark_habit_completed(db: Session, habit_id: int):
     if not habit:
         return None
 
+    # 🔥 Если привычка уже завершена — возвращаем без изменений
+    if not habit.is_active:
+        return habit
+
     today = date.today()
 
-    # Если уже выполнена сегодня — пропускаем
     if habit.last_completed == today:
         return habit
 
-    # Если был пропуск (не обновлялась вчера) — сбрасываем счётчик
     if habit.last_updated and habit.last_updated < today - timedelta(days=1):
         habit.days_completed = 0
 
-    # Увеличиваем счётчик
     habit.days_completed += 1
     habit.last_completed = today
     habit.last_updated = today
 
-    # Проверяем, достигнут ли 21 день
+    create_habit_log(db, habit_id, completed=True)
+
     if habit.days_completed >= habit.max_days:
         habit.is_active = False
         habit.completed_at = datetime.now()
@@ -121,8 +123,17 @@ def mark_habit_skipped(db: Session, habit_id: int):
     if not habit:
         return None
 
+    # 🔥 Если привычка уже завершена — возвращаем без изменений
+    if not habit.is_active:
+        return habit
+
+    today = date.today()
+
     habit.days_completed = 0
-    habit.last_updated = date.today()
+    habit.last_updated = today
+    habit.last_completed = None
+
+    create_habit_log(db, habit_id, completed=False)
 
     db.commit()
     db.refresh(habit)
@@ -130,7 +141,7 @@ def mark_habit_skipped(db: Session, habit_id: int):
 
 
 def complete_habit_early(db: Session, habit_id: int):
-    """Ручное завершение привычки (пользователь считает, что привычка сформирована)"""
+    """Ручное завершение привычки (досрочно)"""
     habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
     if not habit:
         return None
@@ -140,7 +151,7 @@ def complete_habit_early(db: Session, habit_id: int):
 
     habit.is_active = False
     habit.completed_at = datetime.now()
-    # Устанавливаем days_completed = max_days, если ещё не достигнут
+    habit.completed_early = True  # <-- Помечаем, что завершена досрочно
     if habit.days_completed < habit.max_days:
         habit.days_completed = habit.max_days
 
@@ -150,11 +161,7 @@ def complete_habit_early(db: Session, habit_id: int):
 
 
 def check_and_update_habits(db: Session):
-    """
-    Проверяет все активные привычки по правилу 21 дня.
-    Автоматически завершает привычки с days_completed >= 21.
-    Сбрасывает счётчик для привычек, которые не обновлялись > 1 дня.
-    """
+    """Проверка правила 21 дня"""
     today = date.today()
     habits = db.query(models.Habit).filter(models.Habit.is_active == True).all()
 
@@ -162,23 +169,92 @@ def check_and_update_habits(db: Session):
     completed_count = 0
 
     for habit in habits:
-        # Если привычка не обновлялась сегодня
         if habit.last_updated and habit.last_updated < today:
-            # Если последнее обновление было вчера или позже
             if habit.last_updated < today - timedelta(days=1):
-                # Пропущен день — сбрасываем счётчик
                 habit.days_completed = 0
+                create_habit_log(db, habit.id, completed=False)
                 updated_count += 1
             habit.last_updated = today
 
-        # Проверяем правило 21 дня
         if habit.days_completed >= habit.max_days:
             habit.is_active = False
             habit.completed_at = datetime.now()
+            habit.completed_early = False  # <-- Завершена через 21 день (не досрочно)
             completed_count += 1
 
     db.commit()
-    return {
-        "updated": updated_count,
-        "completed": completed_count
-    }
+    return {"updated": updated_count, "completed": completed_count}
+
+
+# ЛОГИ ПРИВЫЧЕК
+
+def create_habit_log(db: Session, habit_id: int, completed: bool = True):
+    """Создаёт запись о выполнении/пропуске привычки"""
+    today = date.today()
+
+    existing = db.query(models.HabitLog).filter(
+        models.HabitLog.habit_id == habit_id,
+        models.HabitLog.date == today
+    ).first()
+
+    if existing:
+        existing.completed = completed
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    log = models.HabitLog(
+        habit_id=habit_id,
+        date=today,
+        completed=completed
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def get_habit_stats(db: Session, user_id: int):
+    """Получает статистику по всем привычкам пользователя"""
+    habits = db.query(models.Habit).filter(models.Habit.user_id == user_id).all()
+
+    result = []
+    for habit in habits:
+        logs = db.query(models.HabitLog).filter(
+            models.HabitLog.habit_id == habit.id
+        ).order_by(models.HabitLog.date.desc()).limit(30).all()
+
+        total_days = len(logs)
+        completed_days = sum(1 for log in logs if log.completed)
+
+        last_7_days = []
+        for log in logs[:7]:
+            last_7_days.append({
+                "date": log.date.strftime("%d.%m"),
+                "completed": log.completed
+            })
+
+        best_streak = 0
+        current_streak = 0
+        for log in sorted(logs, key=lambda x: x.date):
+            if log.completed:
+                current_streak += 1
+                best_streak = max(best_streak, current_streak)
+            else:
+                current_streak = 0
+
+        result.append({
+            "id": habit.id,
+            "name": habit.name,
+            "is_active": habit.is_active,
+            "days_completed": habit.days_completed,
+            "max_days": habit.max_days,
+            "completed_at": habit.completed_at,
+            "created_at": habit.created_at,
+            "total_logs": total_days,
+            "completed_logs": completed_days,
+            "best_streak": best_streak,
+            "last_7_days": last_7_days
+        })
+
+    return result

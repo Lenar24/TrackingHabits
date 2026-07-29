@@ -49,9 +49,10 @@ def create_main_keyboard():
         {"type": "callback", "text": "📋 Мои привычки", "payload": "my_habits"},
         {"type": "callback", "text": "➕ Добавить привычку", "payload": "add_habit"},
         {"type": "callback", "text": "✅ Отметить выполнение", "payload": "mark_complete"},
-        {"type": "callback", "text": "🏁 Завершить привычку", "payload": "complete_early"}
+        {"type": "callback", "text": "🏁 Завершить привычку", "payload": "complete_early"},
+        {"type": "callback", "text": "📊 Статистика", "payload": "stats"}
     )
-    builder.adjust(2)
+    builder.adjust(1)
     return [builder.as_markup()]
 
 
@@ -128,9 +129,10 @@ async def send_habit_list(chat_id: int, user_id: int, username: str = None, acti
         text += f"   Статус: {status_emoji} {status_text}\n"
         text += f"   Прогресс: {days}/{max_days} дней\n"
         text += f"   [{bar}] {int((days / max_days) * 100)}%\n"
+        text += "\n"
 
     text += "\n💡 **Управление привычками:**\n"
-    text += "• Нажмите «✅ Отметить выполнение» для отметки выполнения на сегодня\n"
+    text += "• Нажмите «✅ Отметить выполнение» для отметки сегодня\n"
     text += "• Нажмите «🏁 Завершить привычку» для досрочного завершения"
 
     await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
@@ -161,7 +163,7 @@ async def send_complete_habits_list(chat_id: int, user_id: int, action_type: str
 
     if action_type == 'complete':
         title = "✅ **Отметить выполнение привычки**"
-        hint = "Выберите привычку, которую хотите отметить:"
+        hint = "Выберите привычку, которую хотите отметить сегодня:"
     else:
         title = "🏁 **Завершить привычку досрочно**"
         hint = "Выберите привычку, которую хотите завершить (даже если 21 день не прошёл):"
@@ -185,7 +187,7 @@ async def send_complete_habits_list(chat_id: int, user_id: int, action_type: str
         text = f"📌 **{name}**\n"
         text += f"📊 Прогресс: {days}/{max_days} дней\n"
         if action_type == 'complete':
-            text += "\n✅ Отметить как выполненную?\n"
+            text += "\n✅ Отметить как выполненную сегодня?\n"
             text += "❌ Или пропустить сегодняшний день?"
         else:
             text += "\n🏁 Завершить привычку досрочно?"
@@ -195,6 +197,83 @@ async def send_complete_habits_list(chat_id: int, user_id: int, action_type: str
             text=text,
             attachments=create_habit_keyboard(habit_id, name)
         )
+
+
+async def send_statistics(chat_id: int, user_id: int, username: str = None):
+    """Отправляет подробную статистику по привычкам"""
+    response = await client.get(f"{API_URL}/habits/{user_id}/stats")
+    if response.status_code != 200:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="❌ Не удалось получить статистику. Попробуйте позже.",
+            attachments=create_main_keyboard()
+        )
+        return
+
+    stats = response.json()
+
+    if not stats:
+        text = "📊 У вас пока нет привычек для статистики.\n\n"
+        text += "Нажмите «➕ Добавить привычку», чтобы начать!"
+        await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
+        return
+
+    username_text = f"👤 {username}" if username else ""
+    text = f"📊 **Ваша статистика** {username_text}:\n\n"
+
+    total_habits = len(stats)
+    completed_habits = sum(1 for h in stats if not h.get('is_active', True))
+    active_habits = total_habits - completed_habits
+
+    text += f"📌 **Всего привычек:** {total_habits}\n"
+    text += f"✅ **Активных:** {active_habits}\n"
+    text += f"🏁 **Завершено:** {completed_habits}\n"
+    text += "\n\n"
+
+    for habit in stats:
+        name = habit.get('name', 'Без названия')
+        is_active = habit.get('is_active', True)
+        days = habit.get('days_completed', 0)
+        max_days = habit.get('max_days', 21)
+        best_streak = habit.get('best_streak', 0)
+        completed_logs = habit.get('completed_logs', 0)
+        total_logs = habit.get('total_logs', 0)
+
+        if is_active:
+            status = "✅ Активна"
+        else:
+            status = "🏁 Завершена"
+
+        text += f"📌 **{name}**\n"
+        text += f"   Статус: {status}\n"
+        text += f"   Прогресс: {days}/{max_days} дней\n"
+        text += f"   🔥 Лучшая серия: {best_streak} дней\n"
+
+        if total_logs > 0:
+            percent = int((completed_logs / total_logs) * 100)
+            text += f"   📈 Эффективность: {percent}% ({completed_logs}/{total_logs})\n"
+
+        last_7 = habit.get('last_7_days', [])
+        if last_7:
+            week_display = ""
+            for day in last_7[:7]:
+                if day.get('completed'):
+                    week_display += "✅"
+                else:
+                    week_display += "⬜"
+            text += f"   📅 Неделя: {week_display}\n"
+
+        text += "\n"
+
+    text += "\n💡 **Советы:**\n"
+    if active_habits > 0:
+        text += f"• У вас {active_habits} активных привычек. Продолжайте в том же духе! 💪\n"
+    if completed_habits > 0:
+        text += f"• Вы уже сформировали {completed_habits} привычек! 🎉\n"
+    if active_habits == 0 and completed_habits > 0:
+        text += "• Добавьте новую привычку для продолжения пути! 🚀\n"
+
+    await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
 
 
 async def get_habit_name(habit_id: int):
@@ -231,7 +310,29 @@ async def handle_habit_action(chat_id: int, user_id: int, payload: str):
 
     username = await get_user_name(user_id) or "Пользователь"
 
+    # Проверяем, активна ли привычка
+    current_habit = await client.get(f"{API_URL}/habits/item/{habit_id}")
+    if current_habit.status_code != 200:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ Не удалось найти привычку **{habit_name}**.",
+            attachments=create_main_keyboard()
+        )
+        return
+
+    is_active = current_habit.json().get('is_active', True)
+
+    if not is_active:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"ℹ️ Привычка **{habit_name}** уже завершена. Это действие недоступно.",
+            attachments=create_main_keyboard()
+        )
+        return
+
     if action == "complete":
+        old_days = current_habit.json().get('days_completed', 0)
+
         response = await client.post(f"{API_URL}/habits/{habit_id}/complete")
         if response.status_code == 200:
             habit = response.json()
@@ -240,16 +341,7 @@ async def handle_habit_action(chat_id: int, user_id: int, payload: str):
             is_completed = not habit.get('is_active', True)
             last_completed = habit.get('last_completed')
 
-            today = str(date.today())
-            formatted_today = format_date(today)
-
-            if last_completed and str(last_completed) == today:
-                text = f"ℹ️ **Привычка уже отмечена сегодня!**\n\n"
-                text += f"📌 Привычка: **{habit_name}**\n"
-                text += f"📊 Текущий прогресс: {days}/{max_days} дней\n"
-                text += f"📅 Отмечена: сегодня\n\n"
-                text += "💡 Возвращайтесь завтра, чтобы продолжить!"
-            else:
+            if days > old_days:
                 text = f"✅ **Привычка выполнена!**\n\n"
                 text += f"📌 Привычка: **{habit_name}**\n"
                 text += f"👤 Отметил(а): {username}\n"
@@ -261,6 +353,12 @@ async def handle_habit_action(chat_id: int, user_id: int, payload: str):
                     text += f"🎉 **Поздравляю! Привычка сформирована через {max_days} дней!** 🏁"
                 else:
                     text += f"💪 Осталось: {max_days - days} дней до цели"
+            else:
+                text = f"ℹ️ **Привычка уже отмечена сегодня!**\n\n"
+                text += f"📌 Привычка: **{habit_name}**\n"
+                text += f"📊 Текущий прогресс: {days}/{max_days} дней\n"
+                text += f"📅 Отмечена: сегодня\n\n"
+                text += "💡 Возвращайтесь завтра, чтобы продолжить!"
 
             await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
         else:
@@ -290,10 +388,10 @@ async def handle_habit_action(chat_id: int, user_id: int, payload: str):
                 attachments=create_main_keyboard()
             )
 
-
-
-
     elif action == "finish":
+        was_active = current_habit.json().get('is_active', True)
+        was_completed_early = current_habit.json().get('completed_early', False)
+
         response = await client.post(f"{API_URL}/habits/{habit_id}/complete-early")
         if response.status_code == 200:
             habit = response.json()
@@ -301,34 +399,28 @@ async def handle_habit_action(chat_id: int, user_id: int, payload: str):
             max_days = habit.get('max_days', 21)
             is_active = habit.get('is_active', True)
             completed_at = habit.get('completed_at')
+            completed_early = habit.get('completed_early', False)
 
-            # Проверяем, была ли привычка завершена ДО этого запроса
-            if not is_active and completed_at:
-                formatted_date = format_date(completed_at) or "ранее"
-                # Проверяем, достигнут ли был 21 день
-                if days >= max_days:
-                    # Привычка завершена через правило 21 дня
-                    text = f"🎉 **Привычка сформирована за 21 день!**\n\n"
-                    text += f"📌 Привычка: **{habit_name}**\n"
-                    text += f"📊 Прогресс: {days}/{max_days} дней\n"
-                    text += f"📅 Завершена: {formatted_date}\n\n"
-                    text += "🌟 Отличная работа! Привычка успешно сформирована!"
-
-                else:
-                    # Привычка была завершена досрочно ранее
-                    text = f"ℹ️ **Привычка уже завершена досрочно**\n\n"
-                    text += f"📌 Привычка: **{habit_name}**\n"
-                    text += f"📊 Прогресс: {days}/{max_days} дней\n"
-                    text += f"📅 Завершена: {formatted_date}\n\n"
-                    text += "🏁 Привычка уже сформирована. Отличная работа!"
-
-            else:
-                # Привычка была активна и только что завершена досрочно
+            if was_active:
                 text = f"🏁 **Привычка завершена досрочно!**\n\n"
                 text += f"📌 Привычка: **{habit_name}**\n"
                 text += f"👤 Завершил(а): {username}\n"
                 text += f"📊 Прогресс: {days}/{max_days} дней\n\n"
                 text += "🎉 **Отличная работа!** Вы решили, что привычка сформирована раньше срока!"
+            else:
+                formatted_date = format_date(completed_at) or "ранее"
+                if completed_early:
+                    text = f"ℹ️ **Привычка уже завершена досрочно**\n\n"
+                    text += f"📌 Привычка: **{habit_name}**\n"
+                    text += f"📊 Прогресс: {days}/{max_days} дней\n"
+                    text += f"📅 Завершена: {formatted_date}\n\n"
+                    text += "🏁 Привычка уже сформирована. Отличная работа!"
+                else:
+                    text = f"🎉 **Привычка сформирована за 21 день!**\n\n"
+                    text += f"📌 Привычка: **{habit_name}**\n"
+                    text += f"📊 Прогресс: {days}/{max_days} дней\n"
+                    text += f"📅 Завершена: {formatted_date}\n\n"
+                    text += "🌟 Отличная работа! Привычка успешно сформирована!"
 
             await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
         else:
@@ -401,7 +493,6 @@ async def handle_message_created(update_data: dict):
 
         logger.info(f"💬 Текст: {text}")
 
-        # Если это команда или просто "Начать" — сразу показываем приветствие
         if text.lower() in ["начать", "/start", "start"]:
             await send_welcome(chat_id)
             return
@@ -409,7 +500,6 @@ async def handle_message_created(update_data: dict):
         if text.startswith('/'):
             return
 
-        # Добавляем привычку
         response = await client.post(
             f"{API_URL}/habits/",
             json={"user_id": user_id, "name": text}
@@ -471,6 +561,9 @@ async def handle_message_callback(update_data: dict):
 
         elif payload == "complete_early":
             await send_complete_habits_list(chat_id, user_id, 'finish')
+
+        elif payload == "stats":
+            await send_statistics(chat_id, user_id, username)
 
         elif payload.startswith("complete_") or payload.startswith("skip_") or payload.startswith("finish_"):
             await handle_habit_action(chat_id, user_id, payload)

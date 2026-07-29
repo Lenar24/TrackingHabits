@@ -4,6 +4,7 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import logging
+from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +18,25 @@ if BOT_TOKEN:
 client = httpx.AsyncClient(timeout=30.0, verify=False)
 
 
+def create_main_keyboard():
+    """Создает главную клавиатуру (меню) в виде словаря для JSON"""
+    builder = InlineKeyboardBuilder()
+    builder.add(
+        {"type": "callback", "text": "📋 Мои привычки", "payload": "my_habits"},
+        {"type": "callback", "text": "➕ Добавить привычку", "payload": "add_habit"},
+        {"type": "callback", "text": "✅ Отметить выполнение", "payload": "mark_complete"},
+        {"type": "callback", "text": "🏁 Завершить привычку", "payload": "complete_early"},
+        {"type": "callback", "text": "📊 Статистика", "payload": "stats"}
+    )
+    builder.adjust(1)
+    return {
+        "buttons": builder.payload
+    }
+
+
 async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
     """Отправляет напоминание одному пользователю"""
-    logger.info(f"📤 send_reminder_to_user вызвана для user_id={user_id}, chat_id={chat_id}")
-
     if not habits:
-        logger.info(f"ℹ️ У пользователя {user_id} нет привычек")
         return
 
     habits_text = "📋 **Ваши привычки на сегодня:**\n\n"
@@ -31,19 +45,27 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
         progress = f"{habit.get('days_completed', 0)}/{habit.get('max_days', 21)} дн."
         habits_text += f"{i}. {habit['name']} {status} ({progress})\n"
 
-    # Добавляем подсказки по управлению
-    habits_text += "\n\n🌟 Не забывайте отмечать выполнение привычек!"
-    habits_text += "\n📌 Для отметки выполнения нажмите кнопку ниже."
+    habits_text += "\n\n⚠️ Не забывайте отмечать выполнение привычек!"
+    habits_text += "\n❤️ Для отметки выполнения нажмите кнопку ниже."
+
+    keyboard = create_main_keyboard()
 
     url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
     headers = {
         "Authorization": f"{BOT_TOKEN}",
         "Content-Type": "application/json"
     }
-    payload = {"text": habits_text}
+    payload = {
+        "text": habits_text,
+        "attachments": [
+            {
+                "type": "inline_keyboard",
+                "payload": keyboard
+            }
+        ]
+    }
 
     try:
-        logger.info(f"📤 Отправка пользователю {user_id} (chat_id: {chat_id})")
         response = await client.post(url, headers=headers, json=payload)
         if response.status_code == 200:
             logger.info(f"✅ Напоминание отправлено пользователю {user_id}")
@@ -56,56 +78,30 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
 async def get_users_with_habits():
     """Получает список пользователей с их привычками"""
     try:
-        logger.info("🔄 Получение пользователей с привычками...")
         response = await client.get(f"{API_URL}/users/")
-        logger.info(f"📊 Статус ответа /users/: {response.status_code}")
-
         if response.status_code != 200:
             logger.error(f"❌ Ошибка получения пользователей: {response.text}")
             return []
 
         users = response.json()
-        logger.info(f"📊 Получено пользователей: {len(users)}")
-
-        if not users:
-            logger.info("ℹ️ Нет пользователей в БД")
-            return []
-
         result = []
         for user in users:
             user_id = user.get('user_id')
             chat_id = user.get('chat_id')
-            logger.info(f"📊 Обработка пользователя: {user_id}, chat_id: {chat_id}")
 
             if not chat_id:
-                logger.warning(f"⚠️ У пользователя {user_id} нет chat_id, используем user_id")
                 chat_id = user_id
 
             habits_response = await client.get(f"{API_URL}/habits/{user_id}")
-            logger.info(f"📊 Статус ответа /habits/{user_id}: {habits_response.status_code}")
-
             if habits_response.status_code == 200:
                 habits = habits_response.json()
-                logger.info(f"📊 Получено привычек для {user_id}: {len(habits)}")
-
-                if habits:
-                    active_habits = [h for h in habits if h.get("is_active", True)]
-                    if active_habits:
-                        result.append({
-                            "user_id": user_id,
-                            "chat_id": chat_id,
-                            "habits": active_habits
-                        })
-                        logger.info(
-                            f"✅ Добавлен пользователь {user_id} с {len(active_habits)} привычками, chat_id: {chat_id}")
-                    else:
-                        logger.info(f"ℹ️ У пользователя {user_id} нет активных привычек")
-                else:
-                    logger.info(f"ℹ️ У пользователя {user_id} нет привычек")
-            else:
-                logger.error(f"❌ Ошибка получения привычек для {user_id}: {habits_response.text}")
-
-        logger.info(f"📊 Итоговый результат: {len(result)} пользователей с активными привычками")
+                active_habits = [h for h in habits if h.get("is_active", True)]
+                if active_habits:
+                    result.append({
+                        "user_id": user_id,
+                        "chat_id": chat_id,
+                        "habits": active_habits
+                    })
         return result
     except Exception as e:
         logger.error(f"❌ Ошибка получения пользователей: {e}")
@@ -113,7 +109,6 @@ async def get_users_with_habits():
 
 
 async def send_daily_reminders():
-    """Основная функция для отправки ежедневных напоминаний"""
     logger.info("🔄 Запуск рассылки...")
     if not BOT_TOKEN:
         logger.error("❌ Токен не найден!")
@@ -131,7 +126,6 @@ async def send_daily_reminders():
 
 
 def check_21_days_job():
-    """Обёртка для проверки правила 21 дня"""
     from .database import SessionLocal
     from .crud import check_and_update_habits
     db = SessionLocal()
@@ -159,7 +153,6 @@ def job_function():
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
-    # Утренние напоминания (9:00)
     scheduler.add_job(
         job_function,
         trigger=CronTrigger(hour=9, minute=0),
@@ -168,7 +161,6 @@ def start_scheduler():
         name='Утренние напоминания'
     )
 
-    # Вечерние напоминания (21:00)
     scheduler.add_job(
         job_function,
         trigger=CronTrigger(hour=21, minute=0),
@@ -177,7 +169,6 @@ def start_scheduler():
         name='Вечерние напоминания'
     )
 
-    # Проверка правила 21 дня (каждый день в полночь)
     scheduler.add_job(
         check_21_days_job,
         trigger=CronTrigger(hour=0, minute=0),
