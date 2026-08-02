@@ -1,11 +1,19 @@
-import os
 import asyncio
 import logging
-from dotenv import load_dotenv
+import os
 
-from maxapi import Bot, Dispatcher
-from maxapi.types import BotStarted, MessageCreated, Command, MessageCallback
+import httpx
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Response
+from maxapi import Bot
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
+
+# Используем абсолютные импорты
+from bot.core.config import settings
+from bot.handlers import handle_bot_started, handle_message_callback, handle_message_created
+from bot.keyboards import create_main_keyboard
+from bot.services import APIClient
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -13,22 +21,15 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-bot = Bot(token=os.getenv("MAX_BOT_TOKEN"))
-dp = Dispatcher()
+# Конфигурация
+MAX_BOT_TOKEN = settings.MAX_BOT_TOKEN
+WEBHOOK_URL = settings.WEBHOOK_URL
 
-# Словарь для имитации хранения привычек пользователей
-user_habits = {}
+if not WEBHOOK_URL:
+    raise ValueError("WEBHOOK_URL не задан в .env файле!")
 
-
-def create_keyboard_attachment():
-    """Создает клавиатуру через InlineKeyboardBuilder"""
-    builder = InlineKeyboardBuilder()
-    builder.add(
-        {"type": "callback", "text": "📋 Мои привычки", "payload": "my_habits"},
-        {"type": "callback", "text": "➕ Добавить привычку", "payload": "add_habit"}
-    )
-    builder.adjust(1)
-    return [builder.as_markup()]
+bot = Bot(token=MAX_BOT_TOKEN)
+client = APIClient()
 
 
 async def send_welcome(chat_id):
@@ -41,182 +42,74 @@ async def send_welcome(chat_id):
             "✅ Отслеживать ежедневные привычки\n"
             "📊 Видеть прогресс\n"
             "⏰ Напоминать о задачах\n\n"
-            "Выберите действие:"
+            "Выберите действие в меню ниже:"
         ),
-        attachments=create_keyboard_attachment()
+        attachments=create_main_keyboard(),
     )
 
 
-@dp.bot_started()
-async def bot_started(event: BotStarted):
-    """Приветственное сообщение при запуске бота"""
-    logger.info(f"✅ Событие bot_started: chat_id={event.chat_id}")
-    await send_welcome(event.chat_id)
+# ============================================
+# FASTAPI ПРИЛОЖЕНИЕ
+# ============================================
+
+app = FastAPI(title="Habit Tracker Bot Webhook")
 
 
-@dp.message_created(Command('start'))
-async def start_command(event: MessageCreated):
-    """Обработка команды /start"""
-    chat_id = event.message.recipient.chat_id if hasattr(event.message, 'recipient') else None
-    logger.info(f"✅ Команда /start от chat_id={chat_id}")
-    if chat_id:
-        await send_welcome(chat_id)
+@app.post("/webhook")
+async def webhook(request: Request):
+    try:
+        update_data = await request.json()
+        update_type = update_data.get("update_type")
+        logger.info(f"📨 Получен вебхук: {update_type}")
 
-
-@dp.message_callback()
-async def handle_callback(event: MessageCallback):
-    """
-    Обработчик нажатий на inline-кнопки (событие message_callback)
-    """
-    logger.info(f"🔘 Получен callback: {event}")
-
-    # Получаем chat_id
-    chat_id = None
-    if hasattr(event, 'chat_id'):
-        chat_id = event.chat_id
-    elif hasattr(event, 'chat') and hasattr(event.chat, 'chat_id'):
-        chat_id = event.chat.chat_id
-    elif hasattr(event.message, 'recipient') and hasattr(event.message.recipient, 'chat_id'):
-        chat_id = event.message.recipient.chat_id
-
-    if not chat_id:
-        logger.error("❌ Не удалось получить chat_id в callback")
-        return
-
-    # Получаем user_id
-    user_id = None
-    if hasattr(event, 'user_id'):
-        user_id = event.user_id
-    elif hasattr(event, 'from_user') and hasattr(event.from_user, 'user_id'):
-        user_id = event.from_user.user_id
-    elif hasattr(event.message, 'sender') and hasattr(event.message.sender, 'user_id'):
-        user_id = event.message.sender.user_id
-
-    if not user_id:
-        logger.error("❌ Не удалось получить user_id в callback")
-        return
-
-    # --- ПРАВИЛЬНОЕ ПОЛУЧЕНИЕ PAYLOAD ---
-    # В MAX API payload лежит в event.callback.payload
-    payload = None
-    if hasattr(event, 'callback') and hasattr(event.callback, 'payload'):
-        payload = event.callback.payload
-        logger.info(f"🔘 Payload из event.callback.payload: {payload}")
-    elif hasattr(event, 'payload'):
-        payload = event.payload
-        logger.info(f"🔘 Payload из event.payload: {payload}")
-    elif hasattr(event.message, 'payload'):
-        payload = event.message.payload
-        logger.info(f"🔘 Payload из event.message.payload: {payload}")
-
-    if not payload:
-        logger.error("❌ Не удалось получить payload в callback")
-        return
-
-    # Обработка действий
-    if payload == "my_habits":
-        habits = user_habits.get(user_id, [])
-        if not habits:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="📋 У вас пока нет привычек. Нажмите «➕ Добавить привычку»."
-            )
+        if update_type == "message_created":
+            await handle_message_created(update_data, bot, client)
+        elif update_type == "message_callback":
+            await handle_message_callback(update_data, bot, client)
+        elif update_type == "bot_started":
+            await handle_bot_started(update_data, bot, client)
         else:
-            habits_text = "📋 Ваши привычки:\n\n"
-            for i, habit in enumerate(habits, 1):
-                habits_text += f"{i}. {habit}\n"
-            await bot.send_message(
-                chat_id=chat_id,
-                text=habits_text
-            )
+            logger.warning(f"⚠️ Неизвестный тип обновления: {update_type}")
 
-    elif payload == "add_habit":
-        await bot.send_message(
-            chat_id=chat_id,
-            text="✏️ Введите название новой привычки:"
-        )
+        return Response(status_code=200)
+    except Exception as e:
+        logger.error(f"❌ Ошибка обработки вебхука: {e}")
+        import traceback
 
-    elif payload and payload.startswith("habit_"):
-        action = payload.split("_")[1]
-        if action == "done":
-            await bot.send_message(
-                chat_id=chat_id,
-                text="✅ Привычка отмечена как выполненная!"
-            )
-        elif action == "delete":
-            await bot.send_message(
-                chat_id=chat_id,
-                text="🗑️ Привычка удалена"
-            )
+        traceback.print_exc()
+        return Response(status_code=500)
 
 
-@dp.message_created()
-async def handle_all_messages(event: MessageCreated):
-    """Универсальный обработчик для текстовых сообщений"""
-    logger.info(f"📩 Получено сообщение: {event.message}")
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
-    # Получаем chat_id
-    chat_id = None
-    if hasattr(event.message, 'recipient') and hasattr(event.message.recipient, 'chat_id'):
-        chat_id = event.message.recipient.chat_id
-    elif hasattr(event, 'chat_id'):
-        chat_id = event.chat_id
 
-    if not chat_id:
-        logger.error("❌ Не удалось получить chat_id")
-        return
+# ============================================
+# ЗАПУСК
+# ============================================
 
-    # Получаем user_id
-    user_id = None
-    if hasattr(event.message, 'sender') and hasattr(event.message.sender, 'user_id'):
-        user_id = event.message.sender.user_id
-    elif hasattr(event, 'user_id'):
-        user_id = event.user_id
 
-    if not user_id:
-        logger.error("❌ Не удалось получить user_id")
-        return
+async def set_webhook():
+    url = "https://platform-api2.max.ru/subscriptions"
+    headers = {"Authorization": f"{MAX_BOT_TOKEN}", "Content-Type": "application/json"}
+    payload = {"url": f"{WEBHOOK_URL}", "events": ["message_created", "message_callback", "bot_started"]}
 
-    # Получаем текст
-    text = None
-    if hasattr(event.message, 'body') and hasattr(event.message.body, 'text'):
-        text = event.message.body.text
-        logger.info(f"💬 Текст из body.text: {text}")
-    elif hasattr(event.message, 'text'):
-        text = event.message.text
-        logger.info(f"💬 Текст из message.text: {text}")
-
-    # Обработка команды "Начать" или "start"
-    if text:
-        logger.info(f"💬 Обработка текста: '{text}'")
-        if text.lower() in ["начать", "/start", "start"]:
-            logger.info(f"🔄 Отправка приветствия для chat_id={chat_id}")
-            await send_welcome(chat_id)
-            return
-    else:
-        logger.warning("⚠️ Текст не найден в сообщении")
-        return
-
-    # --- Обработка обычных текстовых сообщений (добавление привычек) ---
-    if not text or text.startswith('/'):
-        return
-
-    # Простая логика: считаем любой текст новой привычкой
-    if user_id not in user_habits:
-        user_habits[user_id] = []
-    user_habits[user_id].append(text)
-
-    await bot.send_message(
-        chat_id=chat_id,
-        text=f"✅ Привычка «{text}» добавлена!\n"
-             f"📋 Всего привычек: {len(user_habits[user_id])}"
-    )
+    async with httpx.AsyncClient(verify=False) as webhook_client:
+        response = await webhook_client.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            logger.info(f"✅ Вебхук установлен: {WEBHOOK_URL}")
+        else:
+            logger.error(f"❌ Ошибка установки вебхука: {response.text}")
 
 
 async def main():
-    print("🚀 Бот запущен и готов к работе!")
-    print("📝 Логи будут отображаться ниже...")
-    await dp.start_polling(bot)
+    await set_webhook()
+    print("🚀 Бот запущен с Webhook!")
+    print(f"📡 Webhook URL: {WEBHOOK_URL}")
+    config = uvicorn.Config(app, host="0.0.0.0", port=8001, loop="asyncio")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 if __name__ == "__main__":

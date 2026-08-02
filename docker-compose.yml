@@ -52,11 +52,12 @@ services:
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN}
       API_URL: http://backend:8000  # Внутреннее имя сервиса
       WEBHOOK_URL: ${WEBHOOK_URL}
+      PYTHONPATH: /app
     volumes:
       - ./bot:/app/bot
       - ./backend:/app/backend
     restart: always
-    command: poetry run python bot/main_with_api.py
+    command: poetry run python -m bot.main
 
 volumes:
   postgres_data:

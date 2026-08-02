@@ -10,7 +10,7 @@ from sqlalchemy import pool
 from alembic import context
 
 # Импортируем модели
-from backend.app.database import Base
+from backend.app.utils.database import Base
 from backend.app import models
 
 # this is the Alembic Config object, which provides
