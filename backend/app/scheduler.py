@@ -1,4 +1,12 @@
+"""
+Модуль отвечает за автоматическую отправку напоминаний
+о привычках пользователям через платформу Max.
+Использует APScheduler для планирования ежедневных рассылок
+и проверки правила 21 дня.
+"""
+
 import asyncio
+import json
 import logging
 import os
 
@@ -8,6 +16,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
+from .services.habit_service import HabitService
+from .utils.database import SessionLocal
+
 logger = logging.getLogger(__name__)
 
 API_URL = os.getenv("API_URL", "http://backend:8000")
@@ -15,7 +26,7 @@ BOT_TOKEN = os.getenv("MAX_BOT_TOKEN")
 
 logger.info("🔑 Токен загружен: %s", "ДА" if BOT_TOKEN else "НЕТ")
 if BOT_TOKEN:
-    logger.info(f"🔑 Длина токена: {len(BOT_TOKEN)} символов")
+    logger.info("🔑 Длина токена: %s символов", len(BOT_TOKEN))
 
 # Московский часовой пояс
 moscow_tz = pytz.timezone("Europe/Moscow")
@@ -53,27 +64,35 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
 
     url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
     headers = {"Authorization": f"{BOT_TOKEN}", "Content-Type": "application/json"}
-    payload = {"text": habits_text, "attachments": [{"type": "inline_keyboard", "payload": keyboard}]}
+    payload = {
+        "text": habits_text,
+        "attachments": [
+            {
+                "type": "inline_keyboard",
+                "payload": keyboard
+            }
+        ]
+    }
 
     try:
-        logger.info(f"📤 Отправка пользователю {user_id} (chat_id: {chat_id})")
+        logger.info("📤 Отправка пользователю %s (chat_id: %s)", user_id, chat_id)
         async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
             response = await client.post(url, headers=headers, json=payload)
             if response.status_code == 200:
-                logger.info(f"✅ Напоминание отправлено пользователю {user_id}")
+                logger.info("✅ Напоминание отправлено пользователю %s", user_id)
             else:
-                logger.error(f"❌ Ошибка {user_id}: {response.status_code} - {response.text}")
-    except Exception as e:
-        logger.error(f"❌ Исключение для {user_id}: {e}")
+                logger.error("❌ Ошибка %s: %s - %s", user_id, response.status_code, response.text)
+    except (httpx.HTTPError, asyncio.TimeoutError, json.JSONDecodeError) as e:
+        logger.error("❌ Исключение для %s: %s", user_id, e)
 
 
 async def get_users_with_habits():
-    """Получает список пользователей с их привычками"""
+    """Получает список пользователей с их активными привычками"""
     try:
         async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
             response = await client.get(f"{API_URL}/users/")
             if response.status_code != 200:
-                logger.error(f"❌ Ошибка получения пользователей: {response.text}")
+                logger.error("❌ Ошибка получения пользователей: %s", response.text)
                 return []
 
             users = response.json()
@@ -90,15 +109,24 @@ async def get_users_with_habits():
                     habits = habits_response.json()
                     active_habits = [h for h in habits if h.get("is_active", True)]
                     if active_habits:
-                        result.append({"user_id": user_id, "chat_id": chat_id, "habits": active_habits})
+                        result.append(
+                            {
+                                "user_id": user_id,
+                                "chat_id": chat_id,
+                                "habits": active_habits
+                            }
+                        )
             return result
-    except Exception as e:
-        logger.error(f"❌ Ошибка получения пользователей: {e}")
+    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
+        logger.error("❌ Ошибка получения пользователей: %s", e)
         return []
 
 
 async def send_daily_reminders():
-    """Основная функция для отправки ежедневных напоминаний"""
+    """
+    Основная функция для отправки ежедневных напоминаний
+    всем пользователям с активными привычками
+    """
     logger.info("🔄 Запуск рассылки...")
     if not BOT_TOKEN:
         logger.error("❌ Токен не найден!")
@@ -109,7 +137,7 @@ async def send_daily_reminders():
         logger.info("ℹ️ Нет пользователей с активными привычками")
         return
 
-    logger.info(f"📨 Отправка {len(users)} пользователям")
+    logger.info("📨 Отправка %s пользователям", len(users))
     tasks = [send_reminder_to_user(u["user_id"], u["habits"], u["chat_id"]) for u in users]
     await asyncio.gather(*tasks)
     logger.info("✅ Рассылка завершена")
@@ -117,15 +145,15 @@ async def send_daily_reminders():
 
 def check_21_days_job():
     """Обёртка для проверки правила 21 дня"""
-    from .services.habit_service import HabitService
-    from .utils.database import SessionLocal
-
     db = SessionLocal()
     try:
         result = HabitService.check_21_days(db)
-        logger.info(f"✅ Правило 21 дня: обновлено {result['updated']}, завершено {result['completed']}")
-    except Exception as e:
-        logger.error(f"❌ Ошибка проверки правила 21 дня: {e}")
+        logger.info(
+            "✅ Правило 21 дня: обновлено %s, завершено %s",
+            result["updated"], result["completed"]
+        )
+    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
+        logger.error("❌ Ошибка проверки правила 21 дня: %s", e)
     finally:
         db.close()
 
@@ -137,8 +165,8 @@ def job_function():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(send_daily_reminders())
-    except Exception as e:
-        logger.error(f"❌ Ошибка в job_function: {e}")
+    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
+        logger.error("❌ Ошибка в job_function: %s", e)
     finally:
         if loop and not loop.is_closed():
             loop.close()
@@ -154,7 +182,7 @@ def start_scheduler():
         trigger=CronTrigger(hour=9, minute=0, timezone=moscow_tz),
         id="morning_reminder_09_00",
         replace_existing=True,
-        name="Утренние напоминания 9:00",
+        name="Утренние напоминания в 9:00",
     )
 
     # Вечерние напоминания (21:00 по Москве)
@@ -163,7 +191,7 @@ def start_scheduler():
         trigger=CronTrigger(hour=21, minute=0, timezone=moscow_tz),
         id="evening_reminder_21_00",
         replace_existing=True,
-        name="Вечерние напоминания 21:00",
+        name="Вечерние напоминания в 21:00",
     )
 
     # Проверка правила 21 дня (каждый день в полночь по Москве)

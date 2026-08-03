@@ -1,3 +1,10 @@
+"""
+Модель Habit представляет привычку пользователя в системе.
+Она хранит информацию о названии, прогрессе выполнения,
+статусе активности и связанных логах.
+Реализует систему отслеживания привычек по методу "21 день".
+"""
+
 from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String
@@ -6,7 +13,9 @@ from sqlalchemy.orm import relationship
 from ..utils.database import Base
 
 
-class Habit(Base):
+class Habit(Base):  # pylint: disable=too-few-public-methods
+    """Модель Привычки. Определяет структуру таблицы habits в базе данных."""
+
     __tablename__ = "habits"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -17,10 +26,12 @@ class Habit(Base):
     is_active = Column(Boolean, default=True)
     days_completed = Column(Integer, default=0)
     max_days = Column(Integer, default=21)
-    last_updated = Column(Date, default=lambda: date.today())
+    last_updated = Column(Date, default=date.today())
     last_completed = Column(Date, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     completed_early = Column(Boolean, default=False)
 
+    # Связь с моделью User (один пользователь → много привычек).
     user = relationship("User", back_populates="habits")
+    # Связь с моделью HabitLog (одна привычка → много логов).
     logs = relationship("HabitLog", back_populates="habit")

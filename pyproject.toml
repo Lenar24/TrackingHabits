@@ -89,7 +89,13 @@ disable = [
     "W0611",  # unused-import
     "W0621",  # redefined-outer-name
     "C0415",  # import-outside-toplevel
-    "E1101",  # no-member (для alembic)
+    "E1101",  # no-member
+    "C0121",  # singleton-comparison
+    "R1731",  # consider-using-max-builtin
+    "W1508",  # invalid-envvar-default
+    "W0108",  # unnecessary-lambda
+    "W0404",  # reimport
+    "W0613",  # unused-argument
 ]
 enable = [
     "E",     # все ошибки
