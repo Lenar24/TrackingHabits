@@ -14,10 +14,10 @@ import httpx
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
 from .services.habit_service import HabitService
 from .utils.database import SessionLocal
+from .utils.keyboards import create_main_keyboard_payload
 
 logger = logging.getLogger(__name__)
 
@@ -30,20 +30,6 @@ if BOT_TOKEN:
 
 # Московский часовой пояс
 moscow_tz = pytz.timezone("Europe/Moscow")
-
-
-def create_main_keyboard():
-    """Создает главную клавиатуру (меню) в виде словаря для JSON"""
-    builder = InlineKeyboardBuilder()
-    builder.add(
-        {"type": "callback", "text": "📋 Мои привычки", "payload": "my_habits"},
-        {"type": "callback", "text": "➕ Добавить привычку", "payload": "add_habit"},
-        {"type": "callback", "text": "✅ Отметить выполнение", "payload": "mark_complete"},
-        {"type": "callback", "text": "🏁 Завершить привычку", "payload": "complete_early"},
-        {"type": "callback", "text": "📊 Статистика", "payload": "stats"},
-    )
-    builder.adjust(1)
-    return {"buttons": builder.payload}
 
 
 async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
@@ -60,7 +46,8 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
     habits_text += "\n\n⚠️ Не забывайте отмечать выполнение привычек!"
     habits_text += "\n❤️ Для отметки выполнения нажмите кнопку ниже."
 
-    keyboard = create_main_keyboard()
+    # Используем общую функцию из utils.keyboards
+    keyboard = create_main_keyboard_payload()
 
     url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
     headers = {"Authorization": f"{BOT_TOKEN}", "Content-Type": "application/json"}
@@ -152,7 +139,7 @@ def check_21_days_job():
             "✅ Правило 21 дня: обновлено %s, завершено %s",
             result["updated"], result["completed"]
         )
-    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
+    except (ValueError, KeyError) as e:
         logger.error("❌ Ошибка проверки правила 21 дня: %s", e)
     finally:
         db.close()
@@ -165,7 +152,7 @@ def job_function():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(send_daily_reminders())
-    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
+    except (httpx.HTTPError, asyncio.TimeoutError, ValueError) as e:
         logger.error("❌ Ошибка в job_function: %s", e)
     finally:
         if loop and not loop.is_closed():

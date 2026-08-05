@@ -23,8 +23,9 @@ def get_habit_stats(user_id: int, db: Session = Depends(get_db)):
     for habit in habits:
         logs = (
             db.query(HabitLog).
-            filter(HabitLog.habit_id == habit.id).
-            order_by(HabitLog.date.desc()).limit(30).all()
+            filter(HabitLog.habit_id == habit.id).order_by(HabitLog.date.desc()).
+            limit(30).
+            all()
         )
 
         total_days = len(logs)

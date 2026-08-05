@@ -5,6 +5,13 @@
 Упрощает импорт и улучшает поддерживаемость кода
 """
 
-from .database import Base, SessionLocal, engine
+from .database import Base, SessionLocal, engine, get_db
+from .keyboards import create_main_keyboard_payload
 
-__all__ = ["Base", "engine", "SessionLocal"]
+__all__ = [
+    "Base",
+    "SessionLocal",
+    "engine",
+    "get_db",
+    "create_main_keyboard_payload"
+]

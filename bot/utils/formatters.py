@@ -1,8 +1,15 @@
+"""
+Модуль предоставляет утилиты для форматирования данных в удобочитаемый вид
+для отображения в MAX боте. Включает функции для форматирования дат,
+списка привычек и статистики с использованием эмодзи и прогресс-баров
+ля визуального представления данных.
+"""
+
 from datetime import datetime
 
 
 def format_date(date_str):
-    """Форматирует дату в ДД-ММ-ГГГГ"""
+    """Преобразование даты в строковый формат ДД-ММ-ГГГГ."""
     if not date_str:
         return None
     try:
@@ -11,18 +18,17 @@ def format_date(date_str):
         else:
             dt = date_str
         return dt.strftime("%d-%m-%Y")
-    except:
+    except (ValueError, TypeError):
         return str(date_str)
 
 
 def format_habit_list(habits, username=None):
-    """Форматирует список привычек для вывода"""
+    """Форматирование списка привычек для отображения в боте.а"""
     if not habits:
         return "📋 У вас пока нет привычек."
 
     username_text = f"👤 {username}" if username else ""
     text = f"📋 **Ваши привычки** {username_text}\n\n"
-    text += "━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     for i, habit in enumerate(habits, 1):
         name = habit.get("name", "Без названия")
@@ -38,13 +44,12 @@ def format_habit_list(habits, username=None):
             status_text = "завершена"
 
         progress = min(int((days / max_days) * 20), 20)
-        bar = "█" * progress + "░" * (20 - progress)
+        progress_bar = "█" * progress + "░" * (20 - progress)
 
         text += f"{i}. **{name}**\n"
         text += f"   Статус: {status_emoji} {status_text}\n"
         text += f"   Прогресс: {days}/{max_days} дней\n"
-        text += f"   [{bar}] {int((days / max_days) * 100)}%\n"
-        text += "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"   [{progress_bar}] {int((days / max_days) * 100)}%\n\n"
 
     text += "\n💡 **Управление привычками:**\n"
     text += "• Нажмите «✅ Отметить выполнение» для отметки\n"
@@ -54,13 +59,12 @@ def format_habit_list(habits, username=None):
 
 
 def format_statistics(stats, username=None):
-    """Форматирует статистику для вывода"""
+    """Форматирование статистики привычек для отображения в боте."""
     if not stats:
         return "📊 У вас пока нет привычек для статистики."
 
     username_text = f"👤 {username}" if username else ""
     text = f"📊 **Ваша статистика** {username_text}\n\n"
-    text += "━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     total_habits = len(stats)
     completed_habits = sum(1 for h in stats if not h.get("is_active", True))
@@ -68,8 +72,7 @@ def format_statistics(stats, username=None):
 
     text += f"📌 **Всего привычек:** {total_habits}\n"
     text += f"✅ **Активных:** {active_habits}\n"
-    text += f"🏁 **Завершено:** {completed_habits}\n"
-    text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    text += f"🏁 **Завершено:** {completed_habits}\n\n"
 
     for habit in stats:
         name = habit.get("name", "Без названия")
@@ -102,16 +105,14 @@ def format_statistics(stats, username=None):
                     week_display += "✅"
                 else:
                     week_display += "⬜"
-            text += f"   📅 Неделя: {week_display}\n"
-
-        text += "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            text += f"   📅 Неделя: {week_display}\n\n"
 
     text += "\n💡 **Советы:**\n"
     if active_habits > 0:
         text += f"• У вас {active_habits} активных привычек. Продолжайте в том же духе! 💪\n"
     if completed_habits > 0:
         text += f"• Вы уже сформировали {completed_habits} привычек! 🎉\n"
-    if active_habits == 0 and completed_habits > 0:
+    if not active_habits and completed_habits > 0:
         text += "• Добавьте новую привычку для продолжения пути! 🚀\n"
 
     return text

@@ -1,3 +1,9 @@
+"""
+Модуль отвечает за загрузку и управление конфигурационными параметрами приложения,
+специфичными для бота и внешних сервисов.
+Использует библиотеку python-dotenv для загрузки переменных окружения из файла .env.
+"""
+
 import os
 
 from dotenv import load_dotenv
@@ -5,7 +11,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Settings:
+class Settings:  # pylint: disable=too-few-public-methods
+    """Класс для хранения конфигурационных параметров, связанных с ботом и внешними API."""
+
     MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN")
     API_URL = os.getenv("API_URL", "http://backend:8000")
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")

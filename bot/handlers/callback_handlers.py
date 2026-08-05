@@ -1,14 +1,22 @@
+"""
+Модуль отвечает за обработку callback-запросов от инлайн-кнопок в MAX боте.
+Обрабатывает действия пользователя: просмотр привычек, отметка выполнения,
+пропуск, досрочное завершение и просмотр статистики.
+"""
+
 import logging
+
+import httpx
 
 from ..keyboards import create_habit_keyboard, create_main_keyboard
 from ..services import HabitService
-from ..utils import format_date, format_habit_list, format_statistics
+from ..utils import format_habit_list, format_statistics
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_message_callback(update_data: dict, bot, client):
-    """Обработчик callback-запросов от кнопок"""
+    """Основной обработчик callback-запросов от инлайн-кнопок."""
     try:
         callback = update_data.get("callback")
         if not callback:
@@ -20,7 +28,7 @@ async def handle_message_callback(update_data: dict, bot, client):
         chat_id = message.get("recipient", {}).get("chat_id")
         username = callback.get("user", {}).get("first_name")
 
-        logger.info(f"🔘 Получен callback: {payload}")
+        logger.info("🔘 Получен callback: %s", payload)
 
         if not chat_id or not user_id:
             return
@@ -49,32 +57,37 @@ async def handle_message_callback(update_data: dict, bot, client):
         elif payload == "stats":
             await handle_stats(chat_id, user_id, username, bot, service)
 
-        elif payload.startswith("complete_") or payload.startswith("skip_") or payload.startswith("finish_"):
+        elif (
+            payload.startswith("complete_") or
+            payload.startswith("skip_") or
+            payload.startswith("finish_")
+        ):
             await handle_habit_action(chat_id, user_id, payload, bot, service)
 
         else:
-            logger.warning(f"⚠️ Неизвестный callback: {payload}")
+            logger.warning("⚠️ Неизвестный callback: %s", payload)
 
-    except Exception as e:
-        logger.error(f"❌ Ошибка в message_callback: {e}")
+    except (httpx.HTTPError, ValueError, KeyError) as e:
+        logger.error("❌ Ошибка в message_callback: %s", e)
 
 
 async def handle_my_habits(chat_id, user_id, username, bot, service):
-    """Показывает список привычек"""
+    """Отображение списка всех привычек пользователя."""
     habits = await service.get_habits(user_id)
     text = format_habit_list(habits, username)
     await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
 
 
 async def handle_mark_complete(chat_id, user_id, bot, service):
-    """Показывает список привычек для отметки выполнения"""
+    """Показ списка активных привычек для отметки выполнения или пропуска."""
     habits = await service.get_habits(user_id)
     active_habits = [h for h in habits if h.get("is_active", True)]
 
     if not active_habits:
         await bot.send_message(
             chat_id=chat_id,
-            text="📋 У вас нет активных привычек для управления.\n\nДобавьте новую привычку через «➕ Добавить привычку»",
+            text="📋 У вас нет активных привычек для управления.\n\n"
+            "Добавьте новую привычку через «➕ Добавить привычку»",
             attachments=create_main_keyboard(),
         )
         return
@@ -96,23 +109,32 @@ async def handle_mark_complete(chat_id, user_id, bot, service):
 
         await bot.send_message(
             chat_id=chat_id,
-            text=f"📌 **{name}**\n📊 Прогресс: {days}/{max_days} дней\n\n✅ Отметить как выполненную?\n❌ Или пропустить сегодняшний день?",
+            text=f"📌 **{name}**\n"
+            f"📊 Прогресс: {days}/{max_days} дней\n\n"
+            f"✅ Отметить как выполненную?\n"
+            f"❌ Или пропустить сегодняшний день?",
             attachments=create_habit_keyboard(habit_id),
         )
 
 
 async def handle_complete_early(chat_id, user_id, bot, service):
-    """Показывает список привычек для досрочного завершения"""
+    """Показ списка привычек для досрочного завершения."""
     habits = await service.get_habits(user_id)
     active_habits = [h for h in habits if h.get("is_active", True)]
 
     if not active_habits:
         await bot.send_message(
-            chat_id=chat_id, text="📋 Все привычки уже завершены или ещё не созданы", attachments=create_main_keyboard()
+            chat_id=chat_id,
+            text="📋 Все привычки уже завершены или ещё не созданы",
+            attachments=create_main_keyboard()
         )
         return
 
-    text = "🏁 **Завершить привычку досрочно**\n\nВыберите привычку, которую хотите завершить (даже если 21 день не прошёл):\n\n"
+    text = (
+        "🏁 **Завершить привычку досрочно**\n\n"
+        "Выберите привычку, которую хотите завершить "
+        "(даже если 21 день не прошёл):\n\n"
+    )
     for habit in active_habits:
         name = habit.get("name", "Без названия")
         days = habit.get("days_completed", 0)
@@ -129,26 +151,34 @@ async def handle_complete_early(chat_id, user_id, bot, service):
 
         await bot.send_message(
             chat_id=chat_id,
-            text=f"📌 **{name}**\n📊 Прогресс: {days}/{max_days} дней\n\n🏁 Завершить привычку досрочно?",
+            text=(
+                f"📌 **{name}**\n"
+                f"📊 Прогресс: {days}/{max_days} дней\n\n"
+                f"🏁 Завершить привычку досрочно?"
+            ),
             attachments=create_habit_keyboard(habit_id),
         )
 
 
 async def handle_stats(chat_id, user_id, username, bot, service):
-    """Показывает статистику"""
+    """Отображение статистики привычек пользователя."""
     stats = await service.get_stats(user_id)
     text = format_statistics(stats, username)
     await bot.send_message(chat_id=chat_id, text=text, attachments=create_main_keyboard())
 
 
 async def handle_habit_action(chat_id, user_id, payload, bot, service):
-    """Обрабатывает действия с привычками"""
+    """Обработка действий с конкретной привычкой."""
     action, habit_id = payload.split("_")
     habit_id = int(habit_id)
 
     result = await service.handle_habit_action(user_id, habit_id, action)
     if result:
-        await bot.send_message(chat_id=chat_id, text=result["text"], attachments=create_main_keyboard())
+        await bot.send_message(
+            chat_id=chat_id,
+            text=result["text"],
+            attachments=create_main_keyboard()
+        )
     else:
         await bot.send_message(
             chat_id=chat_id,
