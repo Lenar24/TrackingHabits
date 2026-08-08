@@ -6,6 +6,7 @@
 """
 
 import logging
+from typing import Any, Dict
 
 import httpx
 
@@ -16,22 +17,27 @@ from ..utils.messages import send_welcome_message
 logger = logging.getLogger(__name__)
 
 
-async def handle_bot_started(update_data: dict, bot, client):
+async def handle_bot_started(update_data: Dict[str, Any], bot, client):
     """Обработка события запуска бота (при старте или перезапуске)."""
     try:
         chat_id = update_data.get("chat_id")
         user_id = update_data.get("user_id")
         logger.info("✅ Событие bot_started: chat_id=%s", chat_id)
 
+        # Проверяем, что user_id и chat_id не None
+        if user_id is None or chat_id is None:
+            logger.warning("⚠️ user_id или chat_id отсутствуют в update_data")
+            return
+
         service = HabitService(client)
-        await service.get_or_create_user(user_id, None, chat_id)
+        await service.get_or_create_user(int(user_id), None, int(chat_id))
 
         await send_welcome_message(chat_id, bot, create_main_keyboard())
     except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.error("❌ Ошибка в bot_started: %s", e)
 
 
-async def handle_message_created(update_data: dict, bot, client):
+async def handle_message_created(update_data: Dict[str, Any], bot, client):
     """Обработка входящих текстовых сообщений от пользователя."""
     try:
         message_data = update_data.get("message")
@@ -49,13 +55,19 @@ async def handle_message_created(update_data: dict, bot, client):
             logger.warning("⚠️ Не удалось получить chat_id или user_id")
             return
 
-        service = HabitService(client)
-        await service.get_or_create_user(user_id, username, chat_id)
-
         if not text:
             return
 
         logger.info("💬 Текст: %s", text)
+
+        service = HabitService(client)
+
+        # Преобразуем в int и передаем username как str или None
+        await service.get_or_create_user(
+            int(user_id),
+            username if username else None,
+            int(chat_id)
+        )
 
         if text.lower() in ["начать", "/start", "start"]:
             await send_welcome_message(chat_id, bot, create_main_keyboard())
@@ -64,7 +76,7 @@ async def handle_message_created(update_data: dict, bot, client):
         if text.startswith("/"):
             return
 
-        habit = await service.add_habit(user_id, text)
+        habit = await service.add_habit(int(user_id), text)
         if habit:
             await bot.send_message(
                 chat_id=chat_id,

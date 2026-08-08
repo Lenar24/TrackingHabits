@@ -6,6 +6,7 @@
 """
 
 import logging
+from typing import Optional
 
 from .api_client import APIClient
 
@@ -15,10 +16,15 @@ logger = logging.getLogger(__name__)
 class HabitService:
     """Инициализация сервиса с HTTP клиентом."""
 
-    def __init__(self, client=None):
+    def __init__(self, client: Optional[APIClient] = None):
         self.client = client if client else APIClient()
 
-    async def get_or_create_user(self, user_id: int, username: str = None, chat_id: int = None):
+    async def get_or_create_user(
+        self,
+        user_id: int,
+        username: Optional[str] = None,
+        chat_id: Optional[int] = None
+    ):
         """Получение или создание пользователя в системе."""
         response = await self.client.get(f"/users/{user_id}")
         if response.status_code == 200:
@@ -144,7 +150,7 @@ class HabitService:
             f"Вы решили, что привычка сформирована раньше срока!"
         }
 
-    async def handle_habit_action(self, habit_id: int, action: str):
+    async def handle_habit_action(self, user_id: int, habit_id: int, action: str):
         """
         Обработка действий с привычкой (выполнить, пропустить, завершить).
         Возвращает текст для ответа
@@ -152,6 +158,8 @@ class HabitService:
         habit_name = await self.get_habit_name(habit_id)
         if not habit_name:
             return {"text": "❌ Не удалось найти привычку."}
+
+        logger.info("🔄 Пользователь %s выполняет '%s' с привычкой %s", user_id, action, habit_id)
 
         current_habit, error = await self._check_habit_active(habit_id, habit_name)
         if error:

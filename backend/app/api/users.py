@@ -29,7 +29,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     """Создание нового пользователя или обновление chat_id для существующего."""
     existing_user = UserService.get_user(db, user.user_id)
     if existing_user:
-        if existing_user.chat_id != user.chat_id:
+        if user.chat_id is not None and existing_user.chat_id != user.chat_id:
             existing_user = UserService.update_chat_id(db, user.user_id, user.chat_id)
         return existing_user
     return UserService.create_user(db, user)
@@ -50,7 +50,7 @@ def update_chat_id(user_id: int, payload: dict, db: Session = Depends(get_db)):
     chat_id = payload.get("chat_id")
     if not chat_id:
         raise HTTPException(status_code=400, detail="chat_id is required")
-    user = UserService.update_chat_id(db, user_id, chat_id)
+    user = UserService.update_chat_id(db, user_id, int(chat_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

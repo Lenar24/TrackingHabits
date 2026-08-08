@@ -34,7 +34,7 @@ async def handle_message_callback(update_data: dict, bot, client):
             return
 
         service = HabitService(client)
-        await service.get_or_create_user(user_id, None, chat_id)
+        await service.get_or_create_user(user_id, None, chat_id) # type: ignore
 
         if payload == "my_habits":
             await handle_my_habits(chat_id, user_id, username, bot, service)

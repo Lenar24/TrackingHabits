@@ -6,6 +6,7 @@ services:
       POSTGRES_USER: postgresql
       POSTGRES_PASSWORD: postgresql
       POSTGRES_DB: habit_tracker
+      TZ: Europe/Moscow
     ports:
       - "5432:5432"
     volumes:
@@ -53,6 +54,7 @@ services:
       API_URL: http://backend:8000  # Внутреннее имя сервиса
       WEBHOOK_URL: ${WEBHOOK_URL}
       PYTHONPATH: /app
+      TZ: Europe/Moscow
     volumes:
       - ./bot:/app/bot
       - ./backend:/app/backend

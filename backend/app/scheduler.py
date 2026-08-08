@@ -191,13 +191,13 @@ def start_scheduler():
     )
 
     # Для теста уведомления приходят через 1 минуту
-    # scheduler.add_job(
-    #     job_function,
-    #     trigger=CronTrigger(minute='*', timezone=moscow_tz),
-    #     id='test_every_minute',
-    #     replace_existing=True,
-    #     name='Тест каждую минуту'
-    # )
+    #scheduler.add_job(
+    #    job_function,
+    #    trigger=CronTrigger(minute='*', timezone=moscow_tz),
+    #    id='test_every_minute',
+    #    replace_existing=True,
+    #    name='Тест каждую минуту'
+    #)
 
     scheduler.start()
     logger.info("✅ Планировщик запущен (ежедневно в 9:00 и 21:00 по Москве)")
