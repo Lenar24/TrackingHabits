@@ -20,6 +20,10 @@ router = APIRouter(prefix="/habits", tags=["habits"])
 @router.post("/", response_model=HabitSchema)
 def create_habit(habit: HabitCreate, db: Session = Depends(get_db)):
     """Создание новой привычки для пользователя."""
+    if not habit.name or not habit.name.strip():
+        raise HTTPException(status_code=400, detail="Habit name cannot be empty")
+    if len(habit.name) > 255:
+        raise HTTPException(status_code=400, detail="Habit name is too long")
     return HabitService.create_habit(db, habit)
 
 
@@ -45,12 +49,25 @@ def get_habit_by_id(habit_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{habit_id}", response_model=HabitSchema)
-def update_habit(habit_id: int, _habit_update: HabitUpdate, db: Session = Depends(get_db)):
+def update_habit(habit_id: int, habit_update: HabitUpdate, db: Session = Depends(get_db)):
     """Обновление данных привычки."""
+    if habit_update.name is not None:
+        if not habit_update.name.strip():
+            raise HTTPException(status_code=400, detail="Habit name cannot be empty")
+        if len(habit_update.name) > 255:
+            raise HTTPException(status_code=400, detail="Habit name is too long")
     habit = HabitService.get_habit(db, habit_id)
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
-    # Реализовать обновление
+    if habit_update.name is not None:
+        habit.name = habit_update.name
+    if habit_update.description is not None:
+        habit.description = habit_update.description
+    if habit_update.is_active is not None:
+        habit.is_active = habit_update.is_active
+
+    db.commit()
+    db.refresh(habit)
     return habit
 
 

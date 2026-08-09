@@ -1,0 +1,68 @@
+name: CI - Code Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgresql
+          POSTGRES_PASSWORD: postgresql
+          POSTGRES_DB: habit_tracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Cache Poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Check formatting (Black)
+        run: poetry run black --check .
+
+      - name: Check imports (isort)
+        run: poetry run isort --check-only .
+
+      - name: Check types (mypy)
+        run: poetry run mypy . --no-error-summary
+
+      - name: Check code quality (pylint)
+        run: poetry run pylint . --score=n
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgresql:postgresql@localhost:5432/habit_tracker
+        run: poetry run pytest -v --cov=backend --cov=bot --cov-report=term

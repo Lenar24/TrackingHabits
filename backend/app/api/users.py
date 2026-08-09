@@ -27,6 +27,8 @@ def get_all_users(db: Session = Depends(get_db)):
 @router.post("/", response_model=UserSchema)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     """Создание нового пользователя или обновление chat_id для существующего."""
+    if user.user_id <= 0:
+        raise HTTPException(status_code=400, detail="user_id must be positive")
     existing_user = UserService.get_user(db, user.user_id)
     if existing_user:
         if user.chat_id is not None and existing_user.chat_id != user.chat_id:
@@ -48,9 +50,16 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 def update_chat_id(user_id: int, payload: dict, db: Session = Depends(get_db)):
     """Обновление ID чата для пользователя."""
     chat_id = payload.get("chat_id")
-    if not chat_id:
+    if chat_id is None:
         raise HTTPException(status_code=400, detail="chat_id is required")
-    user = UserService.update_chat_id(db, user_id, int(chat_id))
+    try:
+        chat_id = int(chat_id)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="chat_id must be a valid integer"
+        ) from exc
+    user = UserService.update_chat_id(db, user_id, chat_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

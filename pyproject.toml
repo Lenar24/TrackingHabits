@@ -92,6 +92,7 @@ disable = [
     "C0415",  # import-outside-toplevel
     "E1101",  # no-member
     "C0121",  # singleton-comparison
+    "C1805",  # use-implicit-booleaness-not-comparison-to-zero
     "R1731",  # consider-using-max-builtin
     "W1508",  # invalid-envvar-default
     "W0108",  # unnecessary-lambda
@@ -117,6 +118,14 @@ generated-members = ["_", "objects", "DoesNotExist", "MultipleObjectsReturned"]
 
 [tool.pylint.main]
 ignore = ["migrations", ".venv", "__pycache__"]
+
+[tool.pylint]
+disable = [
+    "duplicate-code",
+    "redefined-outer-name",
+    "singleton-comparison",
+    "use-implicit-booleaness-not-comparison-to-zero",
+]
 
 # ---------- PYTEST ----------
 [tool.pytest.ini_options]
