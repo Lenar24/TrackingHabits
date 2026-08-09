@@ -30,6 +30,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 # ФУНКЦИИ УПРАВЛЕНИЯ ТАБЛИЦАМИ
 
+
 def create_tables():
     """Создает все таблицы в тестовой БД"""
     Base.metadata.create_all(bind=engine)
@@ -41,6 +42,7 @@ def drop_tables():
 
 
 # ПЕРЕОПРЕДЕЛЕНИЕ ЗАВИСИМОСТЕЙ FASTAPI
+
 
 def override_get_db():
     """Переопределяет зависимость get_db для использования тестовой БД"""
@@ -55,6 +57,7 @@ app.dependency_overrides[get_db] = override_get_db
 
 
 # ФИКСТУРЫ
+
 
 @pytest.fixture(scope="function")
 def db_session():
@@ -133,10 +136,7 @@ def test_user(client):
     Фикстура для тестового пользователя в БД.
     Использует client для создания пользователя через API.
     """
-    response = client.post(
-        "/users/",
-        json={"user_id": 123456789, "username": "test_user", "chat_id": 987654321}
-    )
+    response = client.post("/users/", json={"user_id": 123456789, "username": "test_user", "chat_id": 987654321})
     assert response.status_code == 200, f"Ошибка создания пользователя: {response.text}"
     return response.json()
 
@@ -160,10 +160,7 @@ def test_habit(client, test_user):
 def test_habit_with_progress(client, test_user):
     """Фикстура для привычки с прогрессом"""
     # Создаём привычку
-    response = client.post(
-        "/habits/",
-        json={"user_id": test_user["user_id"], "name": "Привычка с прогрессом"}
-    )
+    response = client.post("/habits/", json={"user_id": test_user["user_id"], "name": "Привычка с прогрессом"})
     assert response.status_code == 200
     habit = response.json()
 
@@ -178,10 +175,7 @@ def test_habit_with_progress(client, test_user):
 def test_habit_completed(client, test_user):
     """Фикстура для завершённой привычки"""
     # Создаём привычку
-    response = client.post(
-        "/habits/",
-        json={"user_id": test_user["user_id"], "name": "Завершённая привычка"}
-    )
+    response = client.post("/habits/", json={"user_id": test_user["user_id"], "name": "Завершённая привычка"})
     assert response.status_code == 200
     habit = response.json()
 
@@ -216,18 +210,17 @@ def multiple_test_habits(client, test_user):
 
 # МАРКЕРЫ ДЛЯ ТЕСТОВ
 
+
 def pytest_configure(config):
     """Настройка маркеров для pytest"""
     config.addinivalue_line("markers", "unit: marks tests as unit tests")
     config.addinivalue_line("markers", "integration: marks tests as integration tests")
-    config.addinivalue_line(
-        "markers",
-        "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
+    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')")
     config.addinivalue_line("markers", "db: marks tests that require database")
 
 
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+
 
 def create_test_user_via_db(session, user_id=12345, chat_id=12345, username="test_user"):
     """Вспомогательная функция для создания пользователя напрямую в БД"""
@@ -240,13 +233,7 @@ def create_test_user_via_db(session, user_id=12345, chat_id=12345, username="tes
 
 def create_test_habit_via_db(session, user_id, name="Тестовая привычка", days=0):
     """Вспомогательная функция для создания привычки напрямую в БД"""
-    habit = Habit(
-        user_id=user_id,
-        name=name,
-        max_days=21,
-        days_completed=days,
-        last_updated=date.today()
-    )
+    habit = Habit(user_id=user_id, name=name, max_days=21, days_completed=days, last_updated=date.today())
     session.add(habit)
     session.commit()
     session.refresh(habit)

@@ -130,11 +130,7 @@ class TestHabitService:
         db_session.refresh(active_habit)
 
         completed_habit = Habit(
-            user_id=user.user_id,
-            name="Completed Habit",
-            max_days=21,
-            is_active=False,
-            days_completed=21
+            user_id=user.user_id, name="Completed Habit", max_days=21, is_active=False, days_completed=21
         )
         db_session.add(completed_habit)
         db_session.commit()

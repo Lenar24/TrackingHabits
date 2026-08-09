@@ -9,10 +9,4 @@ from .formatters import format_date, format_habit_list, format_statistics
 from .messages import send_welcome_message
 from .validators import validate_habit_name
 
-__all__ = [
-    "format_date",
-    "format_habit_list",
-    "format_statistics",
-    "send_welcome_message",
-    "validate_habit_name"
-]
+__all__ = ["format_date", "format_habit_list", "format_statistics", "send_welcome_message", "validate_habit_name"]

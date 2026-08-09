@@ -32,7 +32,7 @@ class UserService:
         """Обновление идентификатора чата для пользователя."""
         user = db.query(User).filter(User.user_id == user_id).first()
         if user:
-            user.chat_id = chat_id # type: ignore
+            user.chat_id = chat_id  # type: ignore
             db.commit()
             db.refresh(user)
         return user

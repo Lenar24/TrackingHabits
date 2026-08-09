@@ -55,10 +55,7 @@ def update_chat_id(user_id: int, payload: dict, db: Session = Depends(get_db)):
     try:
         chat_id = int(chat_id)
     except (ValueError, TypeError) as exc:
-        raise HTTPException(
-            status_code=400,
-            detail="chat_id must be a valid integer"
-        ) from exc
+        raise HTTPException(status_code=400, detail="chat_id must be a valid integer") from exc
     user = UserService.update_chat_id(db, user_id, chat_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -65,10 +65,7 @@ class TestValidation:
     def test_create_habit_with_special_characters(self, client: TestClient):
         """Тест: создание привычки со спецсимволами"""
         client.post("/users/", json={"user_id": 12345, "username": "test_user"})
-        response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Привычка! @#$%^&*()_+{}|:<>?~`"}
-        )
+        response = client.post("/habits/", json={"user_id": 12345, "name": "Привычка! @#$%^&*()_+{}|:<>?~`"})
         if response.status_code == 200:
             data = response.json()
             assert data["name"] == "Привычка! @#$%^&*()_+{}|:<>?~`"

@@ -63,11 +63,7 @@ async def handle_message_created(update_data: Dict[str, Any], bot, client):
         service = HabitService(client)
 
         # Преобразуем в int и передаем username как str или None
-        await service.get_or_create_user(
-            int(user_id),
-            username if username else None,
-            int(chat_id)
-        )
+        await service.get_or_create_user(int(user_id), username if username else None, int(chat_id))
 
         if text.lower() in ["начать", "/start", "start"]:
             await send_welcome_message(chat_id, bot, create_main_keyboard())

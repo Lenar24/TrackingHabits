@@ -8,10 +8,4 @@
 from .database import Base, SessionLocal, engine, get_db
 from .keyboards import create_main_keyboard_payload
 
-__all__ = [
-    "Base",
-    "SessionLocal",
-    "engine",
-    "get_db",
-    "create_main_keyboard_payload"
-]
+__all__ = ["Base", "SessionLocal", "engine", "get_db", "create_main_keyboard_payload"]

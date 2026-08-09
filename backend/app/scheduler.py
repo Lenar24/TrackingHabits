@@ -51,15 +51,7 @@ async def send_reminder_to_user(user_id: int, habits: list, chat_id: int):
 
     url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
     headers = {"Authorization": f"{BOT_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "text": habits_text,
-        "attachments": [
-            {
-                "type": "inline_keyboard",
-                "payload": keyboard
-            }
-        ]
-    }
+    payload = {"text": habits_text, "attachments": [{"type": "inline_keyboard", "payload": keyboard}]}
 
     try:
         logger.info("📤 Отправка пользователю %s (chat_id: %s)", user_id, chat_id)
@@ -96,13 +88,7 @@ async def get_users_with_habits():
                     habits = habits_response.json()
                     active_habits = [h for h in habits if h.get("is_active", True)]
                     if active_habits:
-                        result.append(
-                            {
-                                "user_id": user_id,
-                                "chat_id": chat_id,
-                                "habits": active_habits
-                            }
-                        )
+                        result.append({"user_id": user_id, "chat_id": chat_id, "habits": active_habits})
             return result
     except (httpx.HTTPError, asyncio.TimeoutError, KeyError, ValueError) as e:
         logger.error("❌ Ошибка получения пользователей: %s", e)
@@ -135,10 +121,7 @@ def check_21_days_job():
     db = SessionLocal()
     try:
         result = HabitService.check_21_days(db)
-        logger.info(
-            "✅ Правило 21 дня: обновлено %s, завершено %s",
-            result["updated"], result["completed"]
-        )
+        logger.info("✅ Правило 21 дня: обновлено %s, завершено %s", result["updated"], result["completed"])
     except (ValueError, KeyError) as e:
         logger.error("❌ Ошибка проверки правила 21 дня: %s", e)
     finally:
@@ -191,13 +174,13 @@ def start_scheduler():
     )
 
     # Для теста уведомления приходят через 1 минуту
-    #scheduler.add_job(
+    # scheduler.add_job(
     #    job_function,
     #    trigger=CronTrigger(minute='*', timezone=moscow_tz),
     #    id='test_every_minute',
     #    replace_existing=True,
     #    name='Тест каждую минуту'
-    #)
+    # )
 
     scheduler.start()
     logger.info("✅ Планировщик запущен (ежедневно в 9:00 и 21:00 по Москве)")

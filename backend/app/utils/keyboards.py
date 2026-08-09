@@ -20,9 +20,7 @@ def create_main_keyboard_payload():
         {"type": "callback", "text": "➕ Добавить привычку", "payload": "add_habit"},
         {"type": "callback", "text": "✅ Отметить выполнение", "payload": "mark_complete"},
         {"type": "callback", "text": "🏁 Завершить привычку", "payload": "complete_early"},
-        {"type": "callback", "text": "📊 Статистика", "payload": "stats"}
+        {"type": "callback", "text": "📊 Статистика", "payload": "stats"},
     )
     builder.adjust(1)
-    return {
-        "buttons": builder.payload
-    }
+    return {"buttons": builder.payload}

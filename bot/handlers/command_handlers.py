@@ -43,19 +43,12 @@ async def handle_command(ctx: CommandContext):
     elif ctx.command == "habits":
         habits = await service.get_habits(ctx.user_id)
         text = format_habit_list(habits, ctx.username)
-        await ctx.bot.send_message(
-            chat_id=ctx.chat_id,
-            text=text,
-            attachments=create_main_keyboard()
-        )
+        await ctx.bot.send_message(chat_id=ctx.chat_id, text=text, attachments=create_main_keyboard())
 
     elif ctx.command == "add":
         await ctx.bot.send_message(
             chat_id=ctx.chat_id,
-            text=(
-                "✏️ **Введите название новой привычки:**\n\n" 
-                "Например: «Читать 30 минут» или «Заниматься спортом»"
-            ),
+            text=("✏️ **Введите название новой привычки:**\n\n" "Например: «Читать 30 минут» или «Заниматься спортом»"),
             attachments=create_main_keyboard(),
         )
 
@@ -68,8 +61,4 @@ async def handle_command(ctx: CommandContext):
     elif ctx.command == "stats":
         stats = await service.get_stats(ctx.user_id)
         text = format_statistics(stats, ctx.username)
-        await ctx.bot.send_message(
-            chat_id=ctx.chat_id,
-            text=text,
-            attachments=create_main_keyboard()
-        )
+        await ctx.bot.send_message(chat_id=ctx.chat_id, text=text, attachments=create_main_keyboard())

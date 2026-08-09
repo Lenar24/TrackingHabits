@@ -12,10 +12,7 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
 
     def test_create_user(self, client: TestClient):
         """Тест создания нового пользователя"""
-        response = client.post(
-            "/users/",
-            json={"user_id": 123456789, "username": "test_user", "chat_id": 987654321}
-        )
+        response = client.post("/users/", json={"user_id": 123456789, "username": "test_user", "chat_id": 987654321})
         assert response.status_code == 200
         data = response.json()
         assert data["user_id"] == 123456789
@@ -65,10 +62,7 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
         """Тест: дубликат пользователя с новым chat_id"""
         client.post("/users/", json={"user_id": 66666, "username": "old_user", "chat_id": 11111})
 
-        response = client.post(
-            "/users/",
-            json={"user_id": 66666, "username": "old_user", "chat_id": 22222}
-        )
+        response = client.post("/users/", json={"user_id": 66666, "username": "old_user", "chat_id": 22222})
         assert response.status_code == 200
         data = response.json()
         assert data["chat_id"] == 22222
@@ -166,8 +160,8 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
             json={
                 "user_id": test_user["user_id"],
                 "name": "Тестовая привычка",
-                "description": "Описание тестовой привычки"
-            }
+                "description": "Описание тестовой привычки",
+            },
         )
         assert habit_response.status_code == 200
 
@@ -181,20 +175,14 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
 
     def test_user_with_special_characters_username(self, client: TestClient):
         """Тест создания пользователя со спецсимволами в username"""
-        response = client.post(
-            "/users/",
-            json={"user_id": 1000001, "username": "test_user_123!@#", "chat_id": 2000001}
-        )
+        response = client.post("/users/", json={"user_id": 1000001, "username": "test_user_123!@#", "chat_id": 2000001})
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "test_user_123!@#"
 
     def test_user_with_empty_username(self, client: TestClient):
         """Тест создания пользователя с пустым username"""
-        response = client.post(
-            "/users/",
-            json={"user_id": 1000002, "username": "", "chat_id": 2000002}
-        )
+        response = client.post("/users/", json={"user_id": 1000002, "username": "", "chat_id": 2000002})
         assert response.status_code == 200
         data = response.json()
         assert not data["username"]
@@ -202,10 +190,7 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
     def test_user_with_long_username(self, client: TestClient):
         """Тест создания пользователя с длинным username"""
         long_username = "a" * 255
-        response = client.post(
-            "/users/",
-            json={"user_id": 1000003, "username": long_username, "chat_id": 2000003}
-        )
+        response = client.post("/users/", json={"user_id": 1000003, "username": long_username, "chat_id": 2000003})
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == long_username
@@ -251,8 +236,7 @@ class TestUsersAPI:  # pylint: disable=too-many-public-methods
     def test_user_response_structure(self, client: TestClient):
         """Тест структуры ответа для пользователя"""
         response = client.post(
-            "/users/",
-            json={"user_id": 123456789, "username": "structure_test", "chat_id": 987654321}
+            "/users/", json={"user_id": 123456789, "username": "structure_test", "chat_id": 987654321}
         )
         assert response.status_code == 200
         data = response.json()
@@ -319,8 +303,7 @@ class TestUsersSlow:  # pylint: disable=too-few-public-methods
         """Тест создания большого количества пользователей"""
         for i in range(50):
             response = client.post(
-                "/users/",
-                json={"user_id": 2000000 + i, "username": f"bulk_user_{i}", "chat_id": 3000000 + i}
+                "/users/", json={"user_id": 2000000 + i, "username": f"bulk_user_{i}", "chat_id": 3000000 + i}
             )
             assert response.status_code == 200
 
@@ -336,19 +319,12 @@ class TestUsersIntegration:
 
     def test_user_with_habits_integration(self, client: TestClient):
         """Интеграционный тест: создание пользователя с привычками"""
-        user_response = client.post(
-            "/users/",
-            json={"user_id": 88888, "username": "integration_user"}
-        )
+        user_response = client.post("/users/", json={"user_id": 88888, "username": "integration_user"})
         assert user_response.status_code == 200
 
         habit_response = client.post(
             "/habits/",
-            json={
-                "user_id": 88888,
-                "name": "Integration Habit",
-                "description": "Test habit for integration"
-            },
+            json={"user_id": 88888, "name": "Integration Habit", "description": "Test habit for integration"},
         )
         assert habit_response.status_code == 200
 
@@ -360,10 +336,7 @@ class TestUsersIntegration:
 
     def test_chat_id_update_reflects_in_habits(self, client: TestClient):
         """Тест: обновление chat_id не влияет на привычки"""
-        client.post(
-            "/users/",
-            json={"user_id": 99999, "username": "chat_integration", "chat_id": 11111}
-        )
+        client.post("/users/", json={"user_id": 99999, "username": "chat_integration", "chat_id": 11111})
 
         client.post("/habits/", json={"user_id": 99999, "name": "Habit before chat update"})
 

@@ -13,27 +13,11 @@ def create_main_keyboard():
     """Создание главного меню бота с основными действиями."""
     builder = InlineKeyboardBuilder()
     builder.add(
-        CallbackButton(
-            type="callback", # type: ignore
-            text="📋 Мои привычки",
-            payload="my_habits"
-        ),
-        CallbackButton(
-            type="callback", # type: ignore
-            text="➕ Добавить привычку",
-            payload="add_habit"),
-        CallbackButton(
-            type="callback",# type: ignore
-            text="✅ Отметить выполнение",
-            payload="mark_complete"),
-        CallbackButton(
-            type="callback", # type: ignore
-            text="🏁 Завершить привычку",
-            payload="complete_early"),
-        CallbackButton(
-            type="callback", # type: ignore
-            text="📊 Статистика",
-            payload="stats"),
+        CallbackButton(type="callback", text="📋 Мои привычки", payload="my_habits"),  # type: ignore
+        CallbackButton(type="callback", text="➕ Добавить привычку", payload="add_habit"),  # type: ignore
+        CallbackButton(type="callback", text="✅ Отметить выполнение", payload="mark_complete"),  # type: ignore
+        CallbackButton(type="callback", text="🏁 Завершить привычку", payload="complete_early"),  # type: ignore
+        CallbackButton(type="callback", text="📊 Статистика", payload="stats"),  # type: ignore
     )
     builder.adjust(1)
     return [builder.as_markup()]
@@ -43,21 +27,9 @@ def create_habit_keyboard(habit_id: int):
     """Создание контекстной клавиатуры для управления конкретной привычкой."""
     builder = InlineKeyboardBuilder()
     builder.add(
-        CallbackButton(
-            type="callback", # type: ignore
-            text="✅ Выполнено",
-            payload=f"complete_{habit_id}"
-        ),
-        CallbackButton(
-            type="callback", # type: ignore
-            text="❌ Пропустить",
-            payload=f"skip_{habit_id}"
-        ),
-        CallbackButton(
-            type="callback", # type: ignore
-            text="🏁 Завершить досрочно",
-            payload=f"finish_{habit_id}"
-        ),
+        CallbackButton(type="callback", text="✅ Выполнено", payload=f"complete_{habit_id}"),  # type: ignore
+        CallbackButton(type="callback", text="❌ Пропустить", payload=f"skip_{habit_id}"),  # type: ignore
+        CallbackButton(type="callback", text="🏁 Завершить досрочно", payload=f"finish_{habit_id}"),  # type: ignore
     )
     builder.adjust(1)
     return [builder.as_markup()]

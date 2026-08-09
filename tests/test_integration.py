@@ -19,18 +19,14 @@ class TestIntegration:
         """
 
         # 1. Регистрация пользователя
-        user_response = client.post(
-            "/users/",
-            json={"user_id": 12345, "username": "john_doe", "chat_id": 67890}
-        )
+        user_response = client.post("/users/", json={"user_id": 12345, "username": "john_doe", "chat_id": 67890})
         assert user_response.status_code == 200
         user_data = user_response.json()
         assert user_data["user_id"] == 12345
 
         # 2. Создание привычки
         habit_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Ежедневная зарядка", "description": "10 минут"}
+            "/habits/", json={"user_id": 12345, "name": "Ежедневная зарядка", "description": "10 минут"}
         )
         assert habit_response.status_code == 200
         habit_data = habit_response.json()

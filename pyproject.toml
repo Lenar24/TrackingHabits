@@ -125,6 +125,7 @@ disable = [
     "redefined-outer-name",
     "singleton-comparison",
     "use-implicit-booleaness-not-comparison-to-zero",
+    "line-too-long",
 ]
 
 # ---------- PYTEST ----------

@@ -8,6 +8,7 @@ import pytest
 
 from bot.services.api_client import APIClient
 
+
 class TestAPIClient:
     """Тесты API клиента"""
 

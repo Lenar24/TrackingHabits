@@ -34,7 +34,7 @@ async def handle_message_callback(update_data: dict, bot, client):
             return
 
         service = HabitService(client)
-        await service.get_or_create_user(user_id, None, chat_id) # type: ignore
+        await service.get_or_create_user(user_id, None, chat_id)  # type: ignore
 
         if payload == "my_habits":
             await handle_my_habits(chat_id, user_id, username, bot, service)
@@ -57,11 +57,7 @@ async def handle_message_callback(update_data: dict, bot, client):
         elif payload == "stats":
             await handle_stats(chat_id, user_id, username, bot, service)
 
-        elif (
-            payload.startswith("complete_") or
-            payload.startswith("skip_") or
-            payload.startswith("finish_")
-        ):
+        elif payload.startswith("complete_") or payload.startswith("skip_") or payload.startswith("finish_"):
             await handle_habit_action(chat_id, user_id, payload, bot, service)
 
         else:
@@ -124,9 +120,7 @@ async def handle_complete_early(chat_id, user_id, bot, service):
 
     if not active_habits:
         await bot.send_message(
-            chat_id=chat_id,
-            text="📋 Все привычки уже завершены или ещё не созданы",
-            attachments=create_main_keyboard()
+            chat_id=chat_id, text="📋 Все привычки уже завершены или ещё не созданы", attachments=create_main_keyboard()
         )
         return
 
@@ -151,11 +145,7 @@ async def handle_complete_early(chat_id, user_id, bot, service):
 
         await bot.send_message(
             chat_id=chat_id,
-            text=(
-                f"📌 **{name}**\n"
-                f"📊 Прогресс: {days}/{max_days} дней\n\n"
-                f"🏁 Завершить привычку досрочно?"
-            ),
+            text=(f"📌 **{name}**\n" f"📊 Прогресс: {days}/{max_days} дней\n\n" f"🏁 Завершить привычку досрочно?"),
             attachments=create_habit_keyboard(habit_id),
         )
 
@@ -174,11 +164,7 @@ async def handle_habit_action(chat_id, user_id, payload, bot, service):
 
     result = await service.handle_habit_action(user_id, habit_id, action)
     if result:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=result["text"],
-            attachments=create_main_keyboard()
-        )
+        await bot.send_message(chat_id=chat_id, text=result["text"], attachments=create_main_keyboard())
     else:
         await bot.send_message(
             chat_id=chat_id,

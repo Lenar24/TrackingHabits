@@ -17,8 +17,7 @@ class TestHabitsAPI:
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
 
         response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Читать книги", "description": "Читать 30 минут в день"}
+            "/habits/", json={"user_id": 12345, "name": "Читать книги", "description": "Читать 30 минут в день"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -68,10 +67,7 @@ class TestHabitsAPI:
     def test_get_habit_by_id(self, client: TestClient):
         """Тест получения привычки по ID"""
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Тестовая привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Тестовая привычка"})
         habit_id = create_response.json()["id"]
 
         response = client.get(f"/habits/item/{habit_id}")
@@ -89,10 +85,7 @@ class TestHabitsAPI:
     def test_complete_habit(self, client: TestClient):
         """Тест отметки выполнения привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Выполняемая привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Выполняемая привычка"})
         habit_id = create_response.json()["id"]
 
         response = client.post(f"/habits/{habit_id}/complete")
@@ -201,15 +194,11 @@ class TestHabitsAPI:
     def test_update_habit(self, client: TestClient):
         """Тест обновления привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Старое название"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Старое название"})
         habit_id = create_response.json()["id"]
 
         response = client.put(
-            f"/habits/{habit_id}",
-            json={"name": "Новое название", "description": "Новое описание", "is_active": False}
+            f"/habits/{habit_id}", json={"name": "Новое название", "description": "Новое описание", "is_active": False}
         )
         assert response.status_code == 200
         data = response.json()
@@ -263,7 +252,7 @@ class TestHabitsAPI:
 
 
 @pytest.mark.slow
-class TestHabitsSlow: # pylint: disable=too-few-public-methods
+class TestHabitsSlow:  # pylint: disable=too-few-public-methods
     """Медленные тесты"""
 
     @freeze_time("2026-01-01")
@@ -289,10 +278,7 @@ class TestHabitsIntegration:
     def test_habit_with_logs_integration(self, client: TestClient):
         """Интеграционный тест: привычка с логами"""
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Привычка с логами"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Привычка с логами"})
         habit_id = create_response.json()["id"]
 
         for day in range(7):
@@ -311,10 +297,7 @@ class TestHabitsIntegration:
     def test_habit_complete_early_with_stats(self, client: TestClient):
         """Тест досрочного завершения со статистикой"""
         client.post("/users/", json={"user_id": 12345, "username": "habit_user"})
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Досрочная с логами"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Досрочная с логами"})
         habit_id = create_response.json()["id"]
 
         for day in range(5):

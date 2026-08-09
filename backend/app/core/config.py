@@ -15,10 +15,7 @@ class Settings:  # pylint: disable=too-few-public-methods
     """Класс для хранения всех конфигурационных параметров приложения со значениями по умолчанию."""
 
     # Database. Строка подключения к PostgreSQL базе данных.
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgresql:postgresql@db:5432/habit_tracker"
-    )
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgresql:postgresql@db:5432/habit_tracker")
 
     # JWT. Секретный ключ для подписи JWT токенов.
     SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")

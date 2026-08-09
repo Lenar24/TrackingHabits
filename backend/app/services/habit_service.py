@@ -35,7 +35,7 @@ class HabitService:
         """Получение списка привычек пользователя с возможностью фильтрации."""
         query = db.query(Habit).filter(Habit.user_id == user_id)
         if active_only:
-            query = query.filter(Habit.is_active == True) # pylint: disable=singleton-comparison
+            query = query.filter(Habit.is_active == True)  # pylint: disable=singleton-comparison
         return query.all()
 
     @staticmethod
@@ -109,11 +109,7 @@ class HabitService:
     def _create_log(db: Session, habit_id: int, completed: bool):
         """Внутренний метод для создания или обновления лога выполнения."""
         today = date.today()
-        existing = (
-            db.query(HabitLog).
-            filter(HabitLog.habit_id == habit_id, HabitLog.date == today).
-            first()
-        )
+        existing = db.query(HabitLog).filter(HabitLog.habit_id == habit_id, HabitLog.date == today).first()
 
         if existing:
             existing.completed = completed
@@ -127,7 +123,7 @@ class HabitService:
         """Проверка всех активных привычек на соответствие правилу 21 дня."""
 
         today = date.today()
-        habits = db.query(Habit).filter(Habit.is_active == True).all() # pylint: disable=singleton-comparison
+        habits = db.query(Habit).filter(Habit.is_active == True).all()  # pylint: disable=singleton-comparison
 
         updated_count = 0
         completed_count = 0

@@ -79,14 +79,7 @@ async def set_webhook():
     """Регистрация вебхука в Max API."""
     url = "https://platform-api2.max.ru/subscriptions"
     headers = {"Authorization": f"{MAX_BOT_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "url": f"{WEBHOOK_URL}",
-        "events": [
-            "message_created",
-            "message_callback",
-            "bot_started"
-        ]
-    }
+    payload = {"url": f"{WEBHOOK_URL}", "events": ["message_created", "message_callback", "bot_started"]}
 
     async with httpx.AsyncClient(verify=False) as webhook_client:
         response = await webhook_client.post(url, headers=headers, json=payload)

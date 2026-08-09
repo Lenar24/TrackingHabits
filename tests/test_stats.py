@@ -33,11 +33,7 @@ class TestStatsAPI:
 
         create_response = client.post(
             "/habits/",
-            json={
-                "user_id": 12345,
-                "name": "Статистическая привычка",
-                "description": "Описание для статистики"
-            },
+            json={"user_id": 12345, "name": "Статистическая привычка", "description": "Описание для статистики"},
         )
         habit_id = create_response.json()["id"]
 
@@ -93,10 +89,7 @@ class TestStatsAPI:
         """Тест статистики после выполнения привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Привычка для статистики"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Привычка для статистики"})
         habit_id = create_response.json()["id"]
 
         # Проверяем начальную статистику
@@ -119,10 +112,7 @@ class TestStatsAPI:
         """Тест статистики после пропуска"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Привычка для пропуска"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Привычка для пропуска"})
         habit_id = create_response.json()["id"]
 
         # Выполняем 3 раза
@@ -150,10 +140,7 @@ class TestStatsAPI:
         """Тест лучшей серии в статистике"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Серийная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Серийная привычка"})
         habit_id = create_response.json()["id"]
 
         # Выполняем 3 дня подряд
@@ -181,10 +168,7 @@ class TestStatsAPI:
         """Тест статистики за последние 7 дней"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Еженедельная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Еженедельная привычка"})
         habit_id = create_response.json()["id"]
 
         # Отмечаем 5 дней из 7
@@ -204,10 +188,7 @@ class TestStatsAPI:
         """Тест статистики для завершённой привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Завершаемая привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Завершаемая привычка"})
         habit_id = create_response.json()["id"]
 
         # Выполняем 21 раз
@@ -228,10 +209,7 @@ class TestStatsAPI:
         """Тест статистики для досрочно завершённой привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Досрочная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Досрочная привычка"})
         habit_id = create_response.json()["id"]
 
         # Выполняем 5 раз
@@ -255,10 +233,7 @@ class TestStatsAPI:
         """Тест структуры ответа статистики"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Структурная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Структурная привычка"})
         habit_id = create_response.json()["id"]
 
         # Выполняем несколько раз
@@ -301,10 +276,7 @@ class TestStatsAPI:
         """Тест соотношения выполненных и общих логов"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Смешанная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Смешанная привычка"})
         habit_id = create_response.json()["id"]
 
         with freeze_time("2026-01-01"):
@@ -333,10 +305,7 @@ class TestStatsAPI:
         """Тест статистики с прогрессом привычки"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Прогрессивная привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Прогрессивная привычка"})
         habit_id = create_response.json()["id"]
 
         # Проверяем начальный прогресс
@@ -376,10 +345,7 @@ class TestStatsSlow:  # pylint: disable=too-few-public-methods
         """Тест статистики после многих дней выполнения"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Долгая привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Долгая привычка"})
         habit_id = create_response.json()["id"]
 
         # Выполняем 30 дней с пропусками
@@ -402,17 +368,11 @@ class TestStatsIntegration:
 
     def test_stats_user_habit_relationship(self, client: TestClient):
         """Интеграционный тест: статистика связывает пользователя и привычку"""
-        user_response = client.post(
-            "/users/",
-            json={"user_id": 88888, "username": "integration_stats_user"}
-        )
+        user_response = client.post("/users/", json={"user_id": 88888, "username": "integration_stats_user"})
         assert user_response.status_code == 200
         user_data = user_response.json()
 
-        habit_response = client.post(
-            "/habits/",
-            json={"user_id": 88888, "name": "Интеграционная привычка"}
-        )
+        habit_response = client.post("/habits/", json={"user_id": 88888, "name": "Интеграционная привычка"})
         assert habit_response.status_code == 200
 
         with freeze_time("2026-01-01"):
@@ -430,10 +390,7 @@ class TestStatsIntegration:
         """Интеграционный тест: статистика после циклов выполнение/пропуск"""
         client.post("/users/", json={"user_id": 12345, "username": "stats_user"})
 
-        create_response = client.post(
-            "/habits/",
-            json={"user_id": 12345, "name": "Циклическая привычка"}
-        )
+        create_response = client.post("/habits/", json={"user_id": 12345, "name": "Циклическая привычка"})
         habit_id = create_response.json()["id"]
 
         with freeze_time("2026-01-01"):

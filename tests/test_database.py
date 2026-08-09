@@ -68,12 +68,7 @@ class TestDatabase:
         db_session.refresh(user)
 
         # Создаём привычку
-        habit = Habit(
-            user_id=user.user_id,
-            name="Привычка для логов",
-            max_days=21,
-            last_updated=date.today()
-        )
+        habit = Habit(user_id=user.user_id, name="Привычка для логов", max_days=21, last_updated=date.today())
         db_session.add(habit)
         db_session.commit()
         db_session.refresh(habit)
@@ -100,12 +95,7 @@ class TestDatabase:
         db_session.refresh(user)
 
         # Создаём привычку
-        habit = Habit(
-            user_id=user.user_id,
-            name="Привычка с логами",
-            max_days=21,
-            last_updated=date.today()
-        )
+        habit = Habit(user_id=user.user_id, name="Привычка с логами", max_days=21, last_updated=date.today())
         db_session.add(habit)
         db_session.commit()
         db_session.refresh(habit)
@@ -126,11 +116,7 @@ class TestDatabase:
         assert len(logs) == 5
 
         # Проверяем статусы
-        completed = (
-            db_session.query(HabitLog)
-            .filter(HabitLog.habit_id == habit.id, HabitLog.completed == True)
-            .count()
-        )
+        completed = db_session.query(HabitLog).filter(HabitLog.habit_id == habit.id, HabitLog.completed == True).count()
         assert completed == 3  # 0, 2, 4 - чётные
 
     def test_user_habit_relationship(self, db_session):
@@ -202,9 +188,7 @@ class TestDatabase:
         # Создаём логи
         for i in range(3):
             log = HabitLog(
-                habit_id=habit.id,
-                date=date.today() - __import__("datetime").timedelta(days=i),
-                completed=True
+                habit_id=habit.id, date=date.today() - __import__("datetime").timedelta(days=i), completed=True
             )
             db_session.add(log)
 
@@ -254,29 +238,17 @@ class TestDatabase:
         db_session.add(active)
 
         # Создаём завершённую привычку
-        completed = Habit(
-            user_id=user.user_id,
-            name="Завершённая",
-            max_days=21,
-            is_active=False,
-            days_completed=21
-        )
+        completed = Habit(user_id=user.user_id, name="Завершённая", max_days=21, is_active=False, days_completed=21)
         db_session.add(completed)
 
         db_session.commit()
 
         # Проверяем количество активных
-        active_count = (
-            db_session.query(Habit)
-            .filter(Habit.user_id == user.user_id, Habit.is_active == True)
-            .count()
-        )
+        active_count = db_session.query(Habit).filter(Habit.user_id == user.user_id, Habit.is_active == True).count()
         assert active_count == 1
 
         # Проверяем количество завершённых
         completed_count = (
-            db_session.query(Habit)
-            .filter(Habit.user_id == user.user_id, Habit.is_active == False)
-            .count()
+            db_session.query(Habit).filter(Habit.user_id == user.user_id, Habit.is_active == False).count()
         )
         assert completed_count == 1

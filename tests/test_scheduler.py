@@ -3,14 +3,10 @@
 """
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 
-from backend.app.scheduler import (
-    send_daily_reminders,
-    send_reminder_to_user,
-    start_scheduler,
-    check_21_days_job
-)
+from backend.app.scheduler import check_21_days_job, send_daily_reminders, send_reminder_to_user, start_scheduler
 
 
 class TestScheduler:
@@ -20,9 +16,7 @@ class TestScheduler:
     async def test_send_daily_reminders(self):
         """Тест отправки ежедневных напоминаний"""
         with patch("backend.app.scheduler.get_users_with_habits") as mock_users:
-            mock_users.return_value = [
-                {"user_id": 123, "chat_id": 456, "habits": [{"name": "Test"}]}
-            ]
+            mock_users.return_value = [{"user_id": 123, "chat_id": 456, "habits": [{"name": "Test"}]}]
 
             with patch("backend.app.scheduler.send_reminder_to_user") as mock_send:
                 await send_daily_reminders()

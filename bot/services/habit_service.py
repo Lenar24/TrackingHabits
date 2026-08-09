@@ -19,12 +19,7 @@ class HabitService:
     def __init__(self, client: Optional[APIClient] = None):
         self.client = client if client else APIClient()
 
-    async def get_or_create_user(
-        self,
-        user_id: int,
-        username: Optional[str] = None,
-        chat_id: Optional[int] = None
-    ):
+    async def get_or_create_user(self, user_id: int, username: Optional[str] = None, chat_id: Optional[int] = None):
         """Получение или создание пользователя в системе."""
         response = await self.client.get(f"/users/{user_id}")
         if response.status_code == 200:
@@ -80,10 +75,7 @@ class HabitService:
 
         is_active = current_habit.json().get("is_active", True)
         if not is_active:
-            return None, {
-                "text": f"ℹ️ Привычка **{habit_name}** уже завершена. "
-                        f"Это действие недоступно."
-            }
+            return None, {"text": f"ℹ️ Привычка **{habit_name}** уже завершена. " f"Это действие недоступно."}
 
         return current_habit.json(), None
 
@@ -108,9 +100,7 @@ class HabitService:
             }
 
         text = (
-            f"✅ **Привычка выполнена!**\n\n"
-            f"📌 " f"Привычка: **{habit_name}**\n"
-            f"📊 Прогресс: {days}/{max_days} дней"
+            f"✅ **Привычка выполнена!**\n\n" f"📌 " f"Привычка: **{habit_name}**\n" f"📊 Прогресс: {days}/{max_days} дней"
         )
         if is_completed:
             text += f"\n🎉 **Поздравляю! Привычка сформирована через {max_days} дней!** 🏁"
