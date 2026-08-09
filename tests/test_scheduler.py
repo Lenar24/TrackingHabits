@@ -15,12 +15,13 @@ class TestScheduler:
     @pytest.mark.asyncio
     async def test_send_daily_reminders(self):
         """Тест отправки ежедневных напоминаний"""
-        with patch("backend.app.scheduler.get_users_with_habits") as mock_users:
-            mock_users.return_value = [{"user_id": 123, "chat_id": 456, "habits": [{"name": "Test"}]}]
+        with patch("backend.app.scheduler.BOT_TOKEN", "test-token"):
+            with patch("backend.app.scheduler.get_users_with_habits") as mock_users:
+                mock_users.return_value = [{"user_id": 123, "chat_id": 456, "habits": [{"name": "Test"}]}]
 
-            with patch("backend.app.scheduler.send_reminder_to_user") as mock_send:
-                await send_daily_reminders()
-                mock_send.assert_called_once()
+                with patch("backend.app.scheduler.send_reminder_to_user") as mock_send:
+                    await send_daily_reminders()
+                    mock_send.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_send_reminder_to_user(self):
