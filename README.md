@@ -201,11 +201,11 @@
 
 ```mermaid
 flowchart TB
-    subgraph MAX["MAX Platform (Telegram)"]
+    subgraph MAX["MAX Platform"]
         MAX1["API для чат-ботов"]
     end
     
-    MAX -->|"Webhook"| BOT
+    MAX -->|"Webhook (POST /webhook)"| BOT
     
     subgraph BOT["Bot (FastAPI) — порт 8001"]
         direction LR
@@ -214,7 +214,7 @@ flowchart TB
         B3["HabitService<br/>(client для backend API)"]
     end
     
-    BOT -->|"HTTP"| BACKEND
+    BOT -->|"HTTP API (JSON)"| BACKEND
     
     subgraph BACKEND["Backend (FastAPI) — порт 8000"]
         direction LR
@@ -223,7 +223,7 @@ flowchart TB
         C3["Models<br/>(SQLAlchemy)"]
     end
     
-    BACKEND --> DB[("PostgreSQL<br/>habit_tracker")]
+    BACKEND --> |"SQL"| DB[("PostgreSQL<br/>habit_tracker")]
     
     DB --> TABLES["users, habits, habit_logs"]
     
@@ -244,15 +244,18 @@ flowchart TB
 - Poetry
 - PostgreSQL (для локальной разработки)
 - Аккаунт на платформе [MAX](https://max.ru)
-- Ngrok или Cloudflare Tunnel (для вебхуков)
+- Ngrok, Cloudflare Tunnel или serveo.net (для вебхуков)
 
 ### 1. Клонирование репозитория
 
-```bash
-git clone https://github.com/yourusername/TrackingHabits.git
+```
+git clone https://github.com/Lenar24/TrackingHabits.git
 cd TrackingHabits
-2. Настройка переменных окружения
-bash
+```
+
+### 2. Настройка переменных окружения
+
+```
 # Создать .env файл
 cp .env.example .env
 
@@ -260,7 +263,6 @@ cp .env.example .env
 nano .env
 .env.example:
 
-bash
 # Backend
 DATABASE_URL=postgresql://postgresql:postgresql@db:5432/habit_tracker
 SECRET_KEY=your-secret-key-here
@@ -276,35 +278,47 @@ WEBHOOK_URL=https://your-domain.com/webhook
 POSTGRES_USER=postgresql
 POSTGRES_PASSWORD=postgresql
 POSTGRES_DB=habit_tracker
-3. Получение токена бота в MAX
-Зарегистрируйтесь на платформе MAX
+```
 
-Создайте нового бота в личном кабинете
+### 3. Получение токена бота в MAX
 
-Получите токен бота
+```
+Зарегистрируйтесь на платформе MAX.
+Создайте нового бота в личном кабинете.
+Получите токен бота.
+Добавьте токен в .env как MAX_BOT_TOKEN.
+```
 
-Добавьте токен в .env как MAX_BOT_TOKEN
+### 4. Настройка вебхука
 
-4. Настройка вебхука
-Для разработки (через Cloudflare Tunnel):
+Для разработки (через Cloudflare Tunnel или serveo.net):
 
-bash
+```
 # Скачать cloudflared
 wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
 chmod +x cloudflared-linux-amd64
 
 # Запустить туннель
-./cloudflared-linux-amd64 tunnel --url http://localhost:8001
+./cloudflared-linux-amd64 tunnel --url http://localhost:8001 --protocol http2 для Cloudflare Tunnel
+ssh -R 80:localhost:8001 serveo.net для serveo.net 
 
 # Добавить полученный URL в WEBHOOK_URL
 WEBHOOK_URL=https://xxx.trycloudflare.com/webhook
+```
+
 Для продакшена:
 
-bash
+```
 WEBHOOK_URL=https://your-domain.com/webhook
-🐳 Запуск
-Вариант 1: Docker Compose (рекомендуется)
-bash
+```
+
+---
+
+## 🐳 Запуск
+
+### Docker Compose (рекомендуется)
+
+```
 # Запуск всех сервисов
 docker compose up -d
 
@@ -316,8 +330,11 @@ docker compose down
 
 # Пересборка с обновлением
 docker compose up -d --build
-Вариант 2: Локальный запуск
-bash
+```
+
+### Локальный запуск
+
+```
 # Установка зависимостей
 poetry install
 
@@ -328,41 +345,18 @@ poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 # Запуск bot (в другом терминале)
 cd bot
 poetry run python main.py
-Вариант 3: Через Makefile
-makefile
-# Создать Makefile
-.PHONY: up down logs test lint format
+```
 
-up:
-	docker compose up -d
+## 📚 API Документация
 
-down:
-	docker compose down
-
-logs:
-	docker compose logs -f
-
-test:
-	poetry run pytest -v
-
-lint:
-	poetry run mypy . && poetry run pylint .
-
-format:
-	poetry run black . && poetry run isort .
-bash
-make up   # Запуск
-make logs # Логи
-make test # Тесты
-make down # Остановка
-📚 API Документация
-Доступ к документации
+Доступ к документации. 
 После запуска backend доступна интерактивная документация:
 
-URL	Описание
-http://localhost:8000/docs	Swagger UI
-http://localhost:8000/redoc	ReDoc
-http://localhost:8000/openapi.json	OpenAPI спецификация
+| URL	                                | Описание             |
+|-------------------------------------|----------------------|
+| http://localhost:8000/docs	         | Swagger UI           |
+| http://localhost:8000/redoc	        | ReDoc                |
+| http://localhost:8000/openapi.json	 | OpenAPI спецификация |
 Эндпоинты
 Пользователи (/users)
 Метод	Эндпоинт	Описание
