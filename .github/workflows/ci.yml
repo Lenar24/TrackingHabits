@@ -41,8 +41,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # ✅ Устанавливаем и основные, и dev-зависимости
-          poetry install --no-interaction --no-root --with dev
+          poetry install --no-interaction --with dev
 
       - name: Cache Poetry
         uses: actions/cache@v3
