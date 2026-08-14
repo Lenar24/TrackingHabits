@@ -43,14 +43,6 @@ jobs:
         run: |
           poetry install --no-interaction --with dev
 
-      - name: Cache Poetry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
       - name: Check formatting (Black)
         run: poetry run black --check .
 
