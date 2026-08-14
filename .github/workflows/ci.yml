@@ -40,7 +40,9 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-root
+        run: |
+          # ✅ Устанавливаем и основные, и dev-зависимости
+          poetry install --no-interaction --no-root --with dev
 
       - name: Cache Poetry
         uses: actions/cache@v3
