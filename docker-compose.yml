@@ -1,7 +1,9 @@
 services:
+  # PostgreSQL
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: habit-db
+    restart: always
     environment:
       POSTGRES_USER: postgresql
       POSTGRES_PASSWORD: postgresql
@@ -11,55 +13,117 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgresql"]
+      test: ["CMD-SHELL", "pg_isready -U postgresql -d habit_tracker"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    networks:
+      - habit_network
 
+  # Backend (FastAPI)
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: habit-backend
+    restart: always
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     environment:
+      # Database
       DATABASE_URL: postgresql://postgresql:postgresql@db:5432/habit_tracker
+      
+      # JWT
       SECRET_KEY: ${SECRET_KEY}
-      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      
+      # Environment
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-True}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # API
       API_URL: http://backend:8000
+      
+      # Timezone
       TZ: Europe/Moscow
+      PYTHONPATH: /app
     volumes:
-      - ./backend:/app/backend
-      - ./alembic.ini:/app/alembic.ini  # <-- Добавляем монтирование alembic.ini
-      - ./backend/migrations:/app/migrations  # <-- Добавляем монтирование папки migrations
-    restart: always
-    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+      # Только логи (не код!)
+      - ./logs:/app/logs
+    healthcheck:
+      # Используем httpx (есть в зависимостях)
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 4"
+    networks:
+      - habit_network
 
+  # Bot (MAX API)
   bot:
     build:
       context: .
       dockerfile: Dockerfile.bot
     container_name: habit-bot
+    restart: always
     ports:
       - "8001:8001"
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     environment:
+      # Bot
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN}
-      API_URL: http://backend:8000  # Внутреннее имя сервиса
       WEBHOOK_URL: ${WEBHOOK_URL}
-      PYTHONPATH: /app
+      BOT_PORT: 8001
+      
+      # API
+      API_URL: http://backend:8000
+      
+      # Database (для токенов)
+      TOKEN_DB_PATH: /app/data/bot_tokens.db
+      
+      # Environment
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-True}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Timezone
       TZ: Europe/Moscow
+      PYTHONPATH: /app
     volumes:
-      - ./bot:/app/bot
-      - ./backend:/app/backend
-    restart: always
-    command: poetry run python -m bot.main
+      # Named volume для токенов (не bind mount!)
+      - bot_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8001/health').raise_for_status()"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    command: python -m bot.main
+    networks:
+      - habit_network
 
+# Volumes
 volumes:
   postgres_data:
+    driver: local
+  bot_data:
+    driver: local
+
+# Networks
+networks:
+  habit_network:
+    driver: bridge

@@ -1,62 +1,149 @@
 """
-Модуль предоставляет эндпоинты для управления пользователями системы.
-Включает операции создания, получения, обновления пользователей,
-а также специальную логику для работы с идентификаторами чатов в MAX.
+Модуль предоставляет эндпоинты для управления пользователями.
 """
 
+import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from ..models import User
-from ..schemas import User as UserSchema
-from ..schemas import UserCreate
-from ..services import UserService
+from ..schemas import UserResponse, UserUpdate, UserWithHabits, MessageResponse
+from ..services import UserService, HabitService
 from ..utils.database import get_db
+from ..utils.auth import get_current_user, get_current_admin
 
-router = APIRouter(prefix="/users", tags=["users"])
-
-
-@router.get("/", response_model=List[UserSchema])
-def get_all_users(db: Session = Depends(get_db)):
-    """Получение списка всех зарегистрированных пользователей."""
-    return db.query(User).all()
+logger = logging.getLogger(__name__)
+router = APIRouter()
 
 
-@router.post("/", response_model=UserSchema)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    """Создание нового пользователя или обновление chat_id для существующего."""
-    if user.user_id <= 0:
-        raise HTTPException(status_code=400, detail="user_id must be positive")
-    existing_user = UserService.get_user(db, user.user_id)
-    if existing_user:
-        if user.chat_id is not None and existing_user.chat_id != user.chat_id:
-            existing_user = UserService.update_chat_id(db, user.user_id, user.chat_id)
-        return existing_user
-    return UserService.create_user(db, user)
+@router.get("/", response_model=List[UserResponse])
+def get_all_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """
+    Получение списка всех зарегистрированных пользователей.
+    🔒 Только для администраторов.
+    """
+    return UserService.get_all_users(db, skip, limit)
 
 
-@router.get("/{user_id}", response_model=UserSchema)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    """Получение информации о конкретном пользователе."""
-    db_user = UserService.get_user(db, user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+@router.get("/me", response_model=UserWithHabits)
+def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Получение информации о текущем авторизованном пользователе.
+    """
+    habits = HabitService.get_habits(db, current_user.id, active_only=False)
+
+    return UserWithHabits(
+        id=current_user.id,
+        max_user_id=current_user.max_user_id,
+        username=current_user.username,
+        chat_id=current_user.chat_id,
+        is_admin=current_user.is_admin,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        habits=habits
+    )
 
 
-@router.put("/{user_id}/chat_id")
-def update_chat_id(user_id: int, payload: dict, db: Session = Depends(get_db)):
-    """Обновление ID чата для пользователя."""
-    chat_id = payload.get("chat_id")
-    if chat_id is None:
-        raise HTTPException(status_code=400, detail="chat_id is required")
-    try:
-        chat_id = int(chat_id)
-    except (ValueError, TypeError) as exc:
-        raise HTTPException(status_code=400, detail="chat_id must be a valid integer") from exc
-    user = UserService.update_chat_id(db, user_id, chat_id)
+@router.get("/{user_id}", response_model=UserResponse)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Получение информации о конкретном пользователе.
+    Разрешено только для самого пользователя или админа.
+    """
+    if user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    user = UserService.get_user_by_id(db, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     return user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Обновление данных пользователя.
+    Разрешено только для самого пользователя или админа.
+    """
+    if user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    user = UserService.update_user(db, user_id, user_update)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user
+
+
+@router.put("/me/chat-id", response_model=UserResponse)
+def update_my_chat_id(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Обновление chat_id текущего пользователя.
+    """
+    user = UserService.update_chat_id(db, current_user.max_user_id, chat_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user
+
+
+@router.delete("/{user_id}", response_model=MessageResponse)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """
+    Удаление пользователя.
+    🔒 Только для администраторов.
+    """
+    user = UserService.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    db.delete(user)
+    db.commit()
+
+    logger.info(f"User {user_id} deleted by admin {current_user.id}")
+    return MessageResponse(message="User deleted successfully")

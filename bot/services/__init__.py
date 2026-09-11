@@ -1,11 +1,9 @@
 """
-Модуль является центральной точкой входа для всех клиентских компонентов,
-обеспечивающих взаимодействие бота с бэкенд API.
-Он импортирует и экспортирует HTTP клиент и сервис для работы с привычками,
-предоставляя единый интерфейс для доступа к этим компонентам из любой части приложения.
+Модуль экспорта сервисов бота.
 """
 
 from .api_client import APIClient
+from .auth_service import AuthService
 from .habit_service import HabitService
 
-__all__ = ["APIClient", "HabitService"]
+__all__ = ["APIClient", "AuthService", "HabitService"]

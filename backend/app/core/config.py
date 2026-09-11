@@ -1,32 +1,78 @@
 """
 Модуль отвечает за загрузку и управление конфигурационными параметрами приложения.
-Использует библиотеку python-dotenv для загрузки переменных окружения
-из файла .env и предоставляет единый объект Settings для доступа к настройкам во всем приложении.
+Использует библиотеку python-dotenv для загрузки переменных окружения.
 """
 
 import os
-
 from dotenv import load_dotenv
 
+# Загружаем .env файл (ищет в корне проекта)
 load_dotenv()
 
 
-class Settings:  # pylint: disable=too-few-public-methods
-    """Класс для хранения всех конфигурационных параметров приложения со значениями по умолчанию."""
+class Settings:
+    """Класс для хранения всех конфигурационных параметров приложения."""
 
-    # Database. Строка подключения к PostgreSQL базе данных.
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgresql:postgresql@db:5432/habit_tracker")
+    # Environment
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-    # JWT. Секретный ключ для подписи JWT токенов.
-    SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+    # Database
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgresql:postgresql@db:5432/habit_tracker"
+    )
+    DATABASE_POOL_SIZE = int(os.getenv("DATABASE_POOL_SIZE", "10"))
+    DATABASE_MAX_OVERFLOW = int(os.getenv("DATABASE_MAX_OVERFLOW", "20"))
+
+    # JWT
+    SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-min-32-characters")
     ALGORITHM = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
-    # Bot. Токен для авторизации в Max.
+    # Bot
     MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN")
     API_URL = os.getenv("API_URL", "http://localhost:8000")
-    # URL для вебхука бота. Публичный URL, доступный из интернета.
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    BOT_WORKERS = int(os.getenv("BOT_WORKERS", "4"))
+
+    # Internal API
+    INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN")
+
+    # CORS
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+    CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "True").lower() == "true"
+    CORS_ALLOW_METHODS = os.getenv("CORS_ALLOW_METHODS", "*").split(",")
+    CORS_ALLOW_HEADERS = os.getenv("CORS_ALLOW_HEADERS", "*").split(",")
+
+    # Security
+    ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+
+    # Redis
+    REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_CACHE_EXPIRE = int(os.getenv("REDIS_CACHE_EXPIRE", "86400"))
+
+    # Sentry
+    SENTRY_DSN = os.getenv("SENTRY_DSN")
+
+    # Logging
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FORMAT = os.getenv(
+        "LOG_FORMAT",
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    LOG_FILE = os.getenv("LOG_FILE")
 
 
+# Создаем единственный экземпляр настроек
 settings = Settings()
+
+# Для отладки можно проверить загруженные значения
+if settings.DEBUG:
+    print("✅ Загрузка настроек:")
+    print(f"  - ENVIRONMENT: {settings.ENVIRONMENT}")
+    print(f"  - DATABASE_URL: {settings.DATABASE_URL}")
+    print(f"  - MAX_BOT_TOKEN: {'✅ SET' if settings.MAX_BOT_TOKEN else '❌ NOT SET'}")
+    print(f"  - WEBHOOK_URL: {settings.WEBHOOK_URL or '❌ NOT SET'}")
+    print(f"  - SECRET_KEY: {'✅ SET' if settings.SECRET_KEY else '❌ NOT SET'}")

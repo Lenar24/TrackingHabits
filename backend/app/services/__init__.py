@@ -1,11 +1,8 @@
 """
-Модуль является центральной точкой входа для всех сервисных классов приложения.
-Он импортирует и экспортирует все сервисы, обеспечивая единый интерфейс
-для бизнес-логики.
-Упрощает использование сервисов в других частях приложения и улучшает поддерживаемость кода.
+Модуль является центральной точкой входа для всех сервисных классов.
 """
 
-from .habit_service import HabitService
 from .user_service import UserService
+from .habit_service import HabitService
 
-__all__ = ["HabitService", "UserService"]
+__all__ = ["UserService", "HabitService"]

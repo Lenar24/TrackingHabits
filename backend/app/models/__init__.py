@@ -5,8 +5,9 @@
 Упрощает импорт моделей в других частях приложения и улучшает поддерживаемость кода.
 """
 
+from .base import Base
+from .user import User
 from .habit import Habit
 from .habit_log import HabitLog
-from .user import User
 
-__all__ = ["User", "Habit", "HabitLog"]
+__all__ = ["Base", "User", "Habit", "HabitLog"]

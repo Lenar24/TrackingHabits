@@ -1,10 +1,19 @@
 """
-Модуль является центральной точкой входа для всех функций создания клавиатур бота.
-Он импортирует и экспортирует все функции генерации инлайн-клавиатур,
-обеспечивая единый интерфейс для создания меню и управления привычками.
-Упрощает импорт и улучшает поддерживаемость кода.
+Модуль экспорта клавиатур бота.
 """
 
-from .keyboards import create_habit_keyboard, create_main_keyboard
+from .keyboards import (
+    create_main_keyboard,
+    create_habit_keyboard,
+    create_stats_keyboard,
+    create_confirm_keyboard,
+    create_back_keyboard,
+)
 
-__all__ = ["create_main_keyboard", "create_habit_keyboard"]
+__all__ = [
+    "create_main_keyboard",
+    "create_habit_keyboard",
+    "create_stats_keyboard",
+    "create_confirm_keyboard",
+    "create_back_keyboard",
+]

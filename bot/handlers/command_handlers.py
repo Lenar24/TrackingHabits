@@ -1,7 +1,5 @@
 """
 Модуль отвечает за обработку текстовых команд от пользователя в MAX боте.
-Обрабатывает команды из постоянного меню (start, habits, add, complete,
-finish, stats) и перенаправляет выполнение на соответствующие обработчики.
 """
 
 import logging
@@ -10,6 +8,8 @@ from typing import Any
 
 from ..keyboards import create_main_keyboard
 from ..services import HabitService
+from ..services.auth_service import AuthService
+from ..database import TokenDB
 from ..utils import format_habit_list, format_statistics
 from .callback_handlers import handle_complete_early, handle_mark_complete
 
@@ -19,18 +19,19 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CommandContext:
     """Контекст команды."""
-
     command: str
     chat_id: int
     user_id: int
     username: str
     bot: Any
     client: Any
+    auth_service: AuthService
+    token_db: TokenDB
 
 
-async def handle_command(ctx: CommandContext):
+async def handle_command(ctx: CommandContext) -> None:
     """Основной обработчик текстовых команд от пользователя."""
-    service = HabitService(ctx.client)
+    service = HabitService(ctx.client, ctx.auth_service, ctx.token_db)
     await service.get_or_create_user(ctx.user_id, ctx.username, ctx.chat_id)
 
     if ctx.command == "start":
@@ -41,14 +42,17 @@ async def handle_command(ctx: CommandContext):
         )
 
     elif ctx.command == "habits":
-        habits = await service.get_habits(ctx.user_id)
+        habits = await service.get_habits(ctx.user_id, chat_id=ctx.chat_id)
         text = format_habit_list(habits, ctx.username)
         await ctx.bot.send_message(chat_id=ctx.chat_id, text=text, attachments=create_main_keyboard())
 
     elif ctx.command == "add":
         await ctx.bot.send_message(
             chat_id=ctx.chat_id,
-            text=("✏️ **Введите название новой привычки:**\n\n" "Например: «Читать 30 минут» или «Заниматься спортом»"),
+            text=(
+                "✏️ **Введите название новой привычки:**\n\n"
+                "Например: «Читать 30 минут» или «Заниматься спортом»"
+            ),
             attachments=create_main_keyboard(),
         )
 
@@ -59,6 +63,14 @@ async def handle_command(ctx: CommandContext):
         await handle_complete_early(ctx.chat_id, ctx.user_id, ctx.bot, service)
 
     elif ctx.command == "stats":
-        stats = await service.get_stats(ctx.user_id)
+        stats = await service.get_stats(ctx.user_id, chat_id=ctx.chat_id)
         text = format_statistics(stats, ctx.username)
         await ctx.bot.send_message(chat_id=ctx.chat_id, text=text, attachments=create_main_keyboard())
+
+    else:
+        logger.warning(f"⚠️ Неизвестная команда: {ctx.command}")
+        await ctx.bot.send_message(
+            chat_id=ctx.chat_id,
+            text="❓ Неизвестная команда. Используйте меню ниже.",
+            attachments=create_main_keyboard(),
+        )

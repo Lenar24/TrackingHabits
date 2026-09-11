@@ -1,45 +1,58 @@
 """
-Модуль содержит Pydantic схемы для валидации, сериализации и десериализации
-данных пользователей. Используется для регистрации пользователей,
-получения информации о них и управления их данными.
+Pydantic схемы для пользователей.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from pydantic import BaseModel
-
-from .habit import Habit
+from .habit import HabitResponse
 
 
 class UserBase(BaseModel):
-    """Базовая схема, содержащая основные поля пользователя из MAX."""
-
-    user_id: int
-    username: Optional[str] = None
+    """Базовая схема пользователя."""
+    max_user_id: int = Field(..., description="ID пользователя из MAX")
+    username: Optional[str] = Field(None, max_length=100)
+    chat_id: int = Field(..., description="ID чата для отправки сообщений")
 
 
 class UserCreate(UserBase):
-    """Схема для создания нового пользователя. Наследует поля от UserBase и добавляет chat_id."""
+    """Схема для создания пользователя."""
+    pass
 
+
+class UserUpdate(BaseModel):
+    """Схема для обновления пользователя."""
+    username: Optional[str] = Field(None, max_length=100)
     chat_id: Optional[int] = None
+    is_admin: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+    @field_validator('username')
+    def validate_username(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            if not v or not v.strip():
+                raise ValueError('Имя пользователя не может быть пустым')
+            return v.strip()
+        return v
 
 
-class User(UserBase):
-    """
-    Полная схема пользователя для ответов API.
-    Наследует базовые поля и добавляет все системные поля и связи.
-    """
-
+class UserResponse(BaseModel):
+    """Базовая информация о пользователе (без привычек)."""
     id: int
+    max_user_id: int
+    username: Optional[str]
+    chat_id: int
+    is_admin: bool
+    is_active: bool
     created_at: datetime
-    chat_id: Optional[int] = None
-    habits: List[Habit] = []
+    updated_at: datetime
 
-    class Config:  # pylint: disable=too-few-public-methods
-        """
-        Позволяет преобразовывать SQLAlchemy модели в Pydantic
-        схемы автоматически, включая вложенные отношения.
-        """
+    model_config = ConfigDict(from_attributes=True)
 
-        from_attributes = True
+
+class UserWithHabits(UserResponse):
+    """Пользователь с привычками."""
+    habits: List[HabitResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)

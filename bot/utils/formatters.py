@@ -1,14 +1,13 @@
 """
 Модуль предоставляет утилиты для форматирования данных в удобочитаемый вид
-для отображения в MAX боте. Включает функции для форматирования дат,
-списка привычек и статистики с использованием эмодзи и прогресс-баров
-ля визуального представления данных.
+для отображения в MAX боте.
 """
 
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 
-def format_date(date_str):
+def format_date(date_str: Optional[str]) -> Optional[str]:
     """Преобразование даты в строковый формат ДД-ММ-ГГГГ."""
     if not date_str:
         return None
@@ -22,8 +21,11 @@ def format_date(date_str):
         return str(date_str)
 
 
-def format_habit_list(habits, username=None):
-    """Форматирование списка привычек для отображения в боте.а"""
+def format_habit_list(
+    habits: List[Dict[str, Any]],
+    username: Optional[str] = None
+) -> str:
+    """Форматирование списка привычек для отображения в боте."""
     if not habits:
         return "📋 У вас пока нет привычек."
 
@@ -43,13 +45,14 @@ def format_habit_list(habits, username=None):
             status_emoji = "🏁"
             status_text = "завершена"
 
-        progress = min(int((days / max_days) * 20), 20)
+        progress_percent = int((days / max_days) * 100) if max_days > 0 else 0
+        progress = min(int((days / max_days) * 20), 20) if max_days > 0 else 0
         progress_bar = "█" * progress + "░" * (20 - progress)
 
         text += f"{i}. **{name}**\n"
         text += f"   Статус: {status_emoji} {status_text}\n"
         text += f"   Прогресс: {days}/{max_days} дней\n"
-        text += f"   [{progress_bar}] {int((days / max_days) * 100)}%\n\n"
+        text += f"   [{progress_bar}] {progress_percent}%\n\n"
 
     text += "\n💡 **Управление привычками:**\n"
     text += "• Нажмите «✅ Отметить выполнение» для отметки\n"
@@ -58,7 +61,10 @@ def format_habit_list(habits, username=None):
     return text
 
 
-def format_statistics(stats, username=None):
+def format_statistics(
+    stats: List[Dict[str, Any]],
+    username: Optional[str] = None
+) -> str:
     """Форматирование статистики привычек для отображения в боте."""
     if not stats:
         return "📊 У вас пока нет привычек для статистики."
@@ -83,10 +89,7 @@ def format_statistics(stats, username=None):
         completed_logs = habit.get("completed_logs", 0)
         total_logs = habit.get("total_logs", 0)
 
-        if is_active:
-            status = "✅ Активна"
-        else:
-            status = "🏁 Завершена"
+        status = "✅ Активна" if is_active else "🏁 Завершена"
 
         text += f"📌 **{name}**\n"
         text += f"   Статус: {status}\n"
@@ -101,10 +104,7 @@ def format_statistics(stats, username=None):
         if last_7:
             week_display = ""
             for day in last_7[:7]:
-                if day.get("completed"):
-                    week_display += "✅"
-                else:
-                    week_display += "⬜"
+                week_display += "✅" if day.get("completed") else "⬜"
             text += f"   📅 Неделя: {week_display}\n\n"
 
     text += "\n💡 **Советы:**\n"

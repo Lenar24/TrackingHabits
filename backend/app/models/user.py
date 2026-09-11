@@ -1,30 +1,46 @@
 """
 Модель User представляет пользователя системы.
-Хранит информацию о пользователе из MAX, включая идентификаторы для связи с ботом
-и отправки сообщений. Связана с привычками пользователя через отношение один-ко-многим.
 """
 
-from datetime import datetime, timezone
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import Integer, String, Boolean
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from sqlalchemy import Column, DateTime, Integer, String
-from sqlalchemy.orm import relationship
+from .base import BaseModel
 
-from ..utils.database import Base
+if TYPE_CHECKING:
+    from .habit import Habit
 
 
-class User(Base):  # pylint: disable=too-few-public-methods
+class User(BaseModel):
     """
-    Модель Пользователя.
-    Определяет структуру таблицы users в базе данных для хранения информации о пользователях.
+    Модель пользователя системы.
     """
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, unique=True, index=True)
-    chat_id = Column(Integer, index=True)
-    username = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Внешний ID из MAX
+    max_user_id: Mapped[int] = mapped_column(Integer, unique=True, index=True, nullable=False)
 
-    # Связь с моделью Habit (один пользователь → много привычек).
-    habits = relationship("Habit", back_populates="user")
+    # ID чата для отправки сообщений
+    chat_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+
+    # Имя пользователя (опционально)
+    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Администратор
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Активен ли пользователь
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Связи
+    habits: Mapped[List["Habit"]] = relationship(
+        "Habit",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} max_user_id={self.max_user_id} username={self.username}>"
