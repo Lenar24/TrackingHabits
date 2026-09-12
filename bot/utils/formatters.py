@@ -61,58 +61,67 @@ def format_habit_list(
     return text
 
 
-def format_statistics(
-    stats: List[Dict[str, Any]],
-    username: Optional[str] = None
-) -> str:
-    """Форматирование статистики привычек для отображения в боте."""
+def format_statistics(stats, username=None):
+    """Форматирование общей статистики привычек."""
     if not stats:
         return "📊 У вас пока нет привычек для статистики."
 
-    username_text = f"👤 {username}" if username else ""
-    text = f"📊 **Ваша статистика** {username_text}\n\n"
+    # ✅ Обрабатываем dict от /api/v1/stats/overall
+    if isinstance(stats, dict):
+        total_habits = stats.get("total_habits", 0)
+        active_habits = stats.get("active_habits", 0)
+        completed_habits = stats.get("completed_habits", 0)
+        total_days = stats.get("total_days_completed", 0)
+        best_streak = stats.get("best_overall_streak", 0)
+        completion_rate = stats.get("completion_rate", 0.0)
 
-    total_habits = len(stats)
-    completed_habits = sum(1 for h in stats if not h.get("is_active", True))
-    active_habits = total_habits - completed_habits
+        username_text = f"👤 {username}" if username else ""
+        text = f"📊 **Ваша статистика** {username_text}\n\n"
 
-    text += f"📌 **Всего привычек:** {total_habits}\n"
-    text += f"✅ **Активных:** {active_habits}\n"
-    text += f"🏁 **Завершено:** {completed_habits}\n\n"
+        text += f"📌 **Всего привычек:** {total_habits}\n"
+        text += f"✅ **Активных:** {active_habits}\n"
+        text += f"🏁 **Завершено:** {completed_habits}\n"
+        text += f"📅 **Всего выполнено дней:** {total_days}\n"
+        text += f"🔥 **Лучшая серия:** {best_streak} дней\n"
+        text += f"📈 **Эффективность:** {completion_rate:.1f}%\n"
 
-    for habit in stats:
-        name = habit.get("name", "Без названия")
-        is_active = habit.get("is_active", True)
-        days = habit.get("days_completed", 0)
-        max_days = habit.get("max_days", 21)
-        best_streak = habit.get("best_streak", 0)
-        completed_logs = habit.get("completed_logs", 0)
-        total_logs = habit.get("total_logs", 0)
+        text += "\n💡 **Советы:**\n"
+        if active_habits > 0:
+            text += f"• У вас {active_habits} активных привычек. Продолжайте в том же духе! 💪\n"
+        if completed_habits > 0:
+            text += f"• Вы уже сформировали {completed_habits} привычек! 🎉\n"
+        if not active_habits and completed_habits > 0:
+            text += "• Добавьте новую привычку для продолжения пути! 🚀\n"
 
-        status = "✅ Активна" if is_active else "🏁 Завершена"
+        return text
 
-        text += f"📌 **{name}**\n"
-        text += f"   Статус: {status}\n"
-        text += f"   Прогресс: {days}/{max_days} дней\n"
-        text += f"   🔥 Лучшая серия: {best_streak} дней\n"
+    # ✅ Если list — старая логика
+    if isinstance(stats, list):
+        username_text = f"👤 {username}" if username else ""
+        text = f"📊 **Ваша статистика** {username_text}\n\n"
 
-        if total_logs > 0:
-            percent = int((completed_logs / total_logs) * 100)
-            text += f"   📈 Эффективность: {percent}% ({completed_logs}/{total_logs})\n"
+        total_habits = len(stats)
+        completed_habits = sum(1 for h in stats if not h.get("is_active", True))
+        active_habits = total_habits - completed_habits
 
-        last_7 = habit.get("last_7_days", [])
-        if last_7:
-            week_display = ""
-            for day in last_7[:7]:
-                week_display += "✅" if day.get("completed") else "⬜"
-            text += f"   📅 Неделя: {week_display}\n\n"
+        text += f"📌 **Всего привычек:** {total_habits}\n"
+        text += f"✅ **Активных:** {active_habits}\n"
+        text += f"🏁 **Завершено:** {completed_habits}\n\n"
 
-    text += "\n💡 **Советы:**\n"
-    if active_habits > 0:
-        text += f"• У вас {active_habits} активных привычек. Продолжайте в том же духе! 💪\n"
-    if completed_habits > 0:
-        text += f"• Вы уже сформировали {completed_habits} привычек! 🎉\n"
-    if not active_habits and completed_habits > 0:
-        text += "• Добавьте новую привычку для продолжения пути! 🚀\n"
+        for habit in stats:
+            name = habit.get("name", "Без названия")
+            is_active = habit.get("is_active", True)
+            days = habit.get("days_completed", 0)
+            max_days = habit.get("max_days", 21)
+            best_streak = habit.get("best_streak", 0)
 
-    return text
+            status = "✅ Активна" if is_active else "🏁 Завершена"
+
+            text += f"📌 **{name}**\n"
+            text += f"   Статус: {status}\n"
+            text += f"   Прогресс: {days}/{max_days} дней\n"
+            text += f"   🔥 Лучшая серия: {best_streak} дней\n\n"
+
+        return text
+
+    return "📊 Не удалось загрузить статистику."

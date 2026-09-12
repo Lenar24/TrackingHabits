@@ -4,10 +4,21 @@
 """
 
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-# Загружаем .env файл (ищет в корне проекта)
-load_dotenv()
+# ✅ Загружаем .env.local если существует, иначе .env
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+ENV_LOCAL = PROJECT_ROOT / ".env.local"
+ENV_FILE = PROJECT_ROOT / ".env"
+
+if ENV_LOCAL.exists():
+    load_dotenv(dotenv_path=ENV_LOCAL)
+    print(f"✅ Загружен .env.local")
+else:
+    load_dotenv(dotenv_path=ENV_FILE)
+    print(f"✅ Загружен .env")
 
 
 class Settings:

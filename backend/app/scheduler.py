@@ -30,6 +30,9 @@ MAX_CONCURRENT_REQUESTS = 10
 REMINDER_TIMEOUT = 30.0
 MAX_RETRIES = 3
 
+API_URL = settings.API_URL
+logger.info(f"✅ API_URL: {API_URL}")
+
 # Ограничитель для параллельных запросов
 semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
 
@@ -57,6 +60,7 @@ def get_http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         timeout=httpx.Timeout(REMINDER_TIMEOUT),
         verify=verify_ssl,
+        follow_redirects=True,
         limits=httpx.Limits(max_keepalive_connections=20, max_connections=50)
     )
 
@@ -186,7 +190,7 @@ async def get_users_with_habits() -> List[Dict[str, Any]]:
         async with get_http_client() as client:
             # Получаем всех пользователей
             users_response = await client.get(
-                f"{settings.API_URL}/api/v1/users",
+                f"{API_URL}/api/v1/users/",
                 headers=headers
             )
 
@@ -213,7 +217,7 @@ async def get_users_with_habits() -> List[Dict[str, Any]]:
 
                 # Получаем привычки пользователя
                 habits_response = await client.get(
-                    f"{settings.API_URL}/api/v1/habits",
+                    f"{API_URL}/api/v1/habits/",
                     params={"user_id": user_id, "active_only": True},
                     headers=headers
                 )
@@ -360,6 +364,18 @@ def start_scheduler() -> BackgroundScheduler:
         misfire_grace_time=3600
     )
     logger.info("⏰ Добавлено вечернее напоминание в 21:00 по московскому времени")
+
+    # 3. Тестовое напоминание
+    # scheduler.add_job(
+    #     job_function,
+    #     trigger=CronTrigger(hour=21, minute=15, timezone=MOSCOW_TZ),
+    #     id="test_reminder_21_15",
+    #     replace_existing=True,
+    #     name="Тестовое напоминание в 21:15",
+    #     max_instances=1,
+    #     misfire_grace_time=3600  # 1 час на восстановление
+    # )
+    # logger.info("⏰ Добавлено тестовое напоминание в 21:15 по московскому времени")
 
     # 3. Проверка правила 21 дня (каждый день в полночь + 5 минут)
     scheduler.add_job(

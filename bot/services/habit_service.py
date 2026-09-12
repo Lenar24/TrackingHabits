@@ -179,12 +179,15 @@ class HabitService:
         if response.status_code not in (200, 201):
             return None, {"text": f"❌ Не удалось найти привычку **{habit_name}**."}
 
-        current_habit = response.json()
-        if not current_habit.get("is_active", True):
+        # ✅ ИСПРАВЛЕНО: извлекаем данные из вложенного habit
+        result = response.json()
+        habit = result.get("habit", result)
+
+        if not habit.get("is_active", True):
             return None, {
                 "text": f"ℹ️ Привычка **{habit_name}** уже завершена."
             }
-        return current_habit, None
+        return habit, None
 
     async def _handle_complete(
         self, habit_id, habit_name, current_habit, user_id, chat_id=None
@@ -196,7 +199,9 @@ class HabitService:
         if response.status_code not in (200, 201):
             return {"text": "❌ Не удалось выполнить действие."}
 
-        habit = response.json()
+        # ✅ ИСПРАВЛЕНО: извлекаем данные из вложенного habit
+        result = response.json()
+        habit = result.get("habit", result)
         days = habit.get("days_completed", 0)
         max_days = habit.get("max_days", 21)
         is_completed = not habit.get("is_active", True)
@@ -227,7 +232,18 @@ class HabitService:
         if response.status_code not in (200, 201):
             return {"text": "❌ Не удалось выполнить действие."}
 
-        habit = response.json()
+        result = response.json()
+
+        # ✅ ПРОВЕРКА: если backend вернул success = false
+        if not result.get("success", True):
+            return {
+                "text": (
+                    f"❌ **{result.get('message', 'Не удалось пропустить привычку')}**\n\n"
+                    f"📌 Привычка: **{habit_name}**"
+                )
+            }
+
+        habit = result.get("habit", result)
         days = habit.get("days_completed", 0)
         return {
             "text": (
@@ -243,7 +259,18 @@ class HabitService:
         if response.status_code not in (200, 201):
             return {"text": "❌ Не удалось выполнить действие."}
 
-        habit = response.json()
+        result = response.json()
+
+        # ✅ ПРОВЕРКА: если backend вернул success = false
+        if not result.get("success", True):
+            return {
+                "text": (
+                    f"❌ **{result.get('message', 'Не удалось завершить привычку')}**\n\n"
+                    f"📌 Привычка: **{habit_name}**"
+                )
+            }
+
+        habit = result.get("habit", result)
         days = habit.get("days_completed", 0)
         max_days = habit.get("max_days", 21)
         return {

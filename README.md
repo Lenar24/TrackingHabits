@@ -7,7 +7,8 @@
 [![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
 [![Pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)](https://github.com/Lenar24/TrackingHabits)
 [![Mypy](https://img.shields.io/badge/mypy-passing-brightgreen)](https://github.com/Lenar24/TrackingHabits)
-[![Tests](https://img.shields.io/badge/tests-124%20passed-brightgreen)](https://github.com/Lenar24/TrackingHabits)
+[![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen)](https://github.com/Lenar24/TrackingHabits)
+[![Coverage](https://img.shields.io/badge/coverage-46%25-yellowgreen)](https://github.com/Lenar24/TrackingHabits)
 [![Python](https://img.shields.io/badge/python-3.13-blue)](https://www.python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-green)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)](https://www.postgresql.org)
@@ -37,6 +38,8 @@
 - [CI/CD](#-cicd)
 - [Структура проекта](#-структура-проекта)
 - [Подробное описание работы бота и приложения](#-подробное-описание-работы-бота-и-приложения)
+- [Backend и база данных](#-backend-и-база-данных)
+- [Безопасность и надёжность](#-безопасность-и-надёжность)
 - [Вклад в проект](#-вклад-в-проект)
 - [Лицензия](#-лицензия)
 - [Контакты](#-контакты)
@@ -51,7 +54,7 @@
 Бот интегрируется с MAX через API MAX и предоставляет удобный интерфейс 
 для отслеживания прогресса.
 
-### 🌟 Основные возможности
+### 🌟 Основные возможности:
 
 | Функция                     | Описание                                 |
 |-----------------------------|------------------------------------------|
@@ -62,6 +65,7 @@
 | 🏁 **Правило 21 дня**       | Автоматическое завершение привычки       |
 | ⏰ **Напоминания**           | Ежедневные уведомления (9:00 и 21:00)    |
 | 🎯 **Досрочное завершение** | Возможность завершить привычку раньше    |
+| 🔐 **JWT аутентификация**   | Безопасный доступ к API                  |
 
 ---
 
@@ -183,6 +187,8 @@
 | **PostgreSQL**  | 15       | Основная база данных  |
 | **Alembic**     | 1.12     | Миграции базы данных  |
 | **APScheduler** | 3.10     | Планировщик задач     |
+| **Pydantic**    | 2.0      | Валидация данных      |
+| **python-jose** | 3.3      | JWT токены            |
 
 ### Bot (MAX Платформа)
 | Технология  | Версия   | Назначение                 |
@@ -191,17 +197,18 @@
 | **httpx**   | 0.27     | Асинхронный HTTP клиент    |
 | **Uvicorn** | 0.34     | ASGI сервер                |
 | **FastAPI** | 0.115.13 | Веб-фреймворк для вебхуков |
+| **SQLite**  | -        | Хранение JWT токенов       |
 
 ### Инструменты
 | Инструмент | Версия | Назначение               |
 |------------|--------|--------------------------|
 | **Poetry** | -      | Управление зависимостями |
 | **Docker** | -      | Контейнеризация          |
-| **Pytest** | 7.0    | Тестирование             |
-| **Pylint** | 3.0    | Качество кода            |
-| **Mypy**   | 1.7    | Типизация                |
-| **Black**  | 23.0   | Форматирование           |
-| **Isort**  | 5.12   | Сортировка импортов      |
+| **Pytest** | 8.4    | Тестирование             |
+| **Pylint** | 3.3    | Качество кода            |
+| **Mypy**   | 1.20   | Типизация                |
+| **Black**  | 24.10  | Форматирование           |
+| **Isort**  | 5.13   | Сортировка импортов      |
 
 ### Основные зависимости (Poetry)
 
@@ -212,32 +219,32 @@
 |-------------------|----------------------------------------------|
 | **Web-фреймворк** | FastAPI 0.115.13, Uvicorn 0.34.0             |
 | **База данных**   | SQLAlchemy 2.0, Alembic 1.12, asyncpg 0.30.0 |
-| **Валидация**     | Pydantic 2.0                                 |
-| **Безопасность**  | PyJWT 2.8, Passlib 1.7, bcrypt 4.0           |
+| **Валидация**     | Pydantic 2.0, pydantic-settings              |
+| **Безопасность**  | python-jose 3.3, passlib 1.7, bcrypt 4.2     |
 | **Бот**           | maxapi 1.2.1, httpx 0.27                     |
 | **Планировщик**   | APScheduler 3.10                             |
-| **Утилиты**       | python-dotenv 1.0, pytz 2026.3               |
+| **Retry**         | tenacity 8.5                                 |
+| **Утилиты**       | python-dotenv 1.0, pytz 2024.1               |
 
 ### Dev-зависимости
 
 | Инструмент     | Версия | Назначение               |
 |----------------|--------|--------------------------|
-| **Poetry**     | -      | Управление зависимостями |
-| **Pytest**     | 7.0    | Тестирование             |
-| **Pylint**     | 3.0    | Качество кода            |
-| **Mypy**       | 1.7    | Типизация                |
-| **Black**      | 23.0   | Форматирование           |
-| **Isort**      | 5.12   | Сортировка импортов      |
+| **Pytest**     | 8.4    | Тестирование             |
+| **Pylint**     | 3.3    | Качество кода            |
+| **Mypy**       | 1.20   | Типизация                |
+| **Black**      | 24.10  | Форматирование           |
+| **Isort**      | 5.13   | Сортировка импортов      |
 | **pytest-cov** | 4.1    | Покрытие кода            |
 | **freezegun**  | 1.5    | Мокирование времени      |
 
 ### Установка Poetry
 
 ```
-# Установка
+# Установка Poetry
 curl -sSL https://install.python-poetry.org | python3 -
 
-#Установка зависимостей:
+# Установка зависимостей:
 
 # Все зависимости
 poetry install --with dev
@@ -251,7 +258,6 @@ poetry --version
 # Настройка виртуального окружения
 poetry config virtualenvs.in-project true
 ```
-
 ---
 
 ## 🏗 Архитектура
@@ -269,13 +275,15 @@ flowchart TB
         B1["Handlers<br/>(message, callback, command)"]
         B2["Keyboards<br/>(inline keyboards)"]
         B3["HabitService<br/>(client для backend API)"]
+        B4["AuthService<br/>(JWT)"]
+        B5["TokenDB<br/>(SQLite)"]
     end
     
-    BOT -->|"HTTP API (JSON)"| BACKEND
+    BOT -->|"HTTP API (JSON + JWT)"| BACKEND
     
     subgraph BACKEND["Backend (FastAPI) — порт 8000"]
         direction LR
-        C1["API Routes"]
+        C1["API Routes<br/>(auth, habits, users, stats)"]
         C2["Services<br/>(Business Logic)"]
         C3["Models<br/>(SQLAlchemy)"]
     end
@@ -290,28 +298,27 @@ flowchart TB
     style DB fill:#fbb,stroke:#333,stroke-width:2px
     style TABLES fill:#eee,stroke:#333,stroke-width:1px
 ```
+
 ---
 
 ## 🚀 Установка
 
-### Требования
+### Требования:
 
-- Python 3.13+
-- Docker и Docker Compose
-- Poetry (для управления зависимостями)
-- PostgreSQL (для локальной разработки)
-- Аккаунт на платформе [MAX](https://max.ru)
-- Ngrok, Cloudflare Tunnel или serveo.net (для вебхуков)
+* Python 3.13+
+* Docker и Docker Compose
+* Poetry (для управления зависимостями)
+* PostgreSQL (для локальной разработки)
+* Аккаунт на платформе MAX
+* Cloudflare Tunnel, ngrok или serveo.net (для вебхуков)
 
-### 1. Клонирование репозитория
-
+1. Клонирование репозитория
 ```
 git clone https://github.com/Lenar24/TrackingHabits.git
 cd TrackingHabits
 ```
 
-### 2. Установка зависимостей
-
+2. Установка зависимостей
 ```
 # Установить все зависимости (основные + dev)
 poetry install --with dev
@@ -320,8 +327,7 @@ poetry install --with dev
 poetry install --no-dev
 ```
 
-### 3. Настройка переменных окружения
-
+3. Настройка переменных окружения
 ```
 # Создать .env файл
 cp .env.example .env
@@ -330,61 +336,102 @@ cp .env.example .env
 nano .env
 .env.example:
 
-# Backend
-DATABASE_URL=postgresql://postgresql:postgresql@db:5432/habit_tracker
-SECRET_KEY=your-secret-key-here
+env
+# ============================================
+# ENVIRONMENT
+# ============================================
+ENVIRONMENT=development
+DEBUG=True
+
+# ============================================
+# DATABASE (PostgreSQL)
+# ============================================
+# Для локальной разработки: localhost
+# Для Docker: db
+DATABASE_URL=postgresql://postgresql:postgresql@localhost:5432/habit_tracker
+DATABASE_POOL_SIZE=10
+DATABASE_MAX_OVERFLOW=20
+
+# ============================================
+# JWT
+# ============================================
+# Сгенерировать: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=your-secret-key-here-min-32-characters
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# Bot (MAX Platform)
-MAX_BOT_TOKEN=your-max-bot-token
+# ============================================
+# BOT (MAX Messenger)
+# ============================================
+MAX_BOT_TOKEN=your-max-bot-token-here
 API_URL=http://backend:8000
 WEBHOOK_URL=https://your-domain.com/webhook
+BOT_PORT=8001
+BOT_WORKERS=4
+TOKEN_DB_PATH=bot_tokens.db
 
-# Docker
+# ============================================
+# LOGGING
+# ============================================
+LOG_LEVEL=INFO
+LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+LOG_FILE=logs/app.log
+
+# ============================================
+# CORS
+# ============================================
+CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+CORS_ALLOW_CREDENTIALS=True
+CORS_ALLOW_METHODS=*
+CORS_ALLOW_HEADERS=*
+
+# ============================================
+# SECURITY
+# ============================================
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# ============================================
+# DOCKER (PostgreSQL)
+# ============================================
 POSTGRES_USER=postgresql
 POSTGRES_PASSWORD=postgresql
 POSTGRES_DB=habit_tracker
 ```
 
-### 4. Получение токена бота в MAX
-
+4. Получение токена бота в MAX
 ```
-Зарегистрируйтесь на платформе MAX.
-Создайте нового бота в личном кабинете.
-Получите токен бота.
-Добавьте токен в .env как MAX_BOT_TOKEN.
+1. Зарегистрируйтесь на платформе MAX.
+2. Создайте нового бота в личном кабинете.
+3. Получите токен бота.
+4. Добавьте токен в .env как MAX_BOT_TOKEN.
 ```
 
-### 5. Настройка вебхука
-
-Для разработки (через Cloudflare Tunnel или serveo.net):
-
+5. Настройка вебхука<br>
+Для разработки (через Cloudflare Tunnel):
 ```
 # Скачать cloudflared
-wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-chmod +x cloudflared-linux-amd64
+wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+
+# Установить
+sudo dpkg -i cloudflared-linux-amd64.deb
 
 # Запустить туннель
-./cloudflared-linux-amd64 tunnel --url http://localhost:8001 --protocol http2 для Cloudflare Tunnel
-ssh -R 80:localhost:8001 serveo.net для serveo.net 
+cloudflared tunnel --url http://localhost:8001 --protocol http2
 
-# Добавить полученный URL в WEBHOOK_URL
+# Скопировать URL (например, https://xxx.trycloudflare.com)
+# Добавить в WEBHOOK_URL с /webhook
 WEBHOOK_URL=https://xxx.trycloudflare.com/webhook
-```
 
 Для продакшена:
-
-```
+env
 WEBHOOK_URL=https://your-domain.com/webhook
 ```
-
 ---
 
 ## 🐳 Запуск
 
 ### Docker Compose (рекомендуется)
-
 ```
 # Запуск всех сервисов
 docker compose up -d
@@ -401,112 +448,153 @@ docker compose up -d --build
 
 ### Локальный запуск
 
+Терминал 1: PostgreSQL
 ```
-# Установка зависимостей
-poetry install
+cd TrackingHabits
+docker compose up -d db
+```
 
-# Запуск backend
+Терминал 2: Backend
+```
 cd backend
-poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Запуск bot (в другом терминале)
-cd bot
-poetry run python main.py
+export DATABASE_URL=postgresql://postgresql:postgresql@localhost:5432/habit_tracker
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Терминал 3: Cloudflare Tunnel
+```
+cloudflared tunnel --url http://localhost:8001 --protocol http2
+```
+
+Терминал 4: Bot
+```
+cd bot
+export API_URL=http://localhost:8000
+python -m bot.main
+```
 ---
 
 ## 📚 API Документация
 
-Доступ к документации.<br>
 После запуска backend доступна интерактивная документация:
 
-| URL	                                | Описание             |
-|-------------------------------------|----------------------|
-| http://localhost:8000/docs	         | Swagger UI           |
-| http://localhost:8000/redoc	        | ReDoc                |
-| http://localhost:8000/openapi.json	 | OpenAPI спецификация |
-
+| URL	                                    | Описание             |
+|-----------------------------------------|----------------------|
+| http://localhost:8000/api/docs	         | Swagger UI           |
+| http://localhost:8000/api/redoc	        | ReDoc                |
+| http://localhost:8000/api/openapi.json	 | OpenAPI спецификация |
 ---
 
 ## 🗺 Эндпоинты
 
-### 👥 Пользователи (/users)
+### 🔐 Аутентификация (/api/v1/auth):
 
-| Метод	 | Эндпоинт	                 | Описание                     |
-|--------|---------------------------|------------------------------|
-| POST	  | /users/	                  | Создание пользователя        |
-| GET	   | /users/	                  | Получение всех пользователей |
-| GET	   | /users/{user_id}	         | Получение пользователя       |
-| PUT	   | /users/{user_id}/chat_id	 | Обновление chat_id           |
+| Метод	 | Эндпоинт	             | Описание             |
+|--------|-----------------------|----------------------|
+| POST	  | /api/v1/auth/login	   | Логин (JWT)          |
+| POST	  | /api/v1/auth/refresh	 | Обновление токена    |
+| GET	   | /api/v1/auth/me	      | Текущий пользователь |
+| POST	  | /api/v1/auth/logout	  | Выход                |
 
-### 📋 Привычки (/habits)
+### 👥 Пользователи (/api/v1/users):
 
-| Метод	  | Эндпоинт	                          | Описание             |
-|---------|------------------------------------|----------------------|
-| POST	   | /habits/	                          | Создание привычки    |
-| GET	    | /habits/{user_id}	                 | Активные привычки    |
-| GET	    | /habits/{user_id}/all	             | Все привычки         |
-| GET	    | /habits/item/{habit_id}	           | Привычка по ID       |
-| PUT	    | /habits/{habit_id}	                | Обновление привычки  |
-| DELETE	 | /habits/{habit_id}	                | Удаление привычки    |
-| POST	   | /habits/{habit_id}/complete	       | Отметка выполнения   |
-| POST	   | /habits/{habit_id}/skip	           | Пропуск              |
-| POST	   | /habits/{habit_id}/complete-early	 | Досрочное завершение |
+| Метод  | 	Эндпоинт                 | 	Описание                 |
+|--------|---------------------------|---------------------------|
+| GET    | 	/api/v1/users/           | 	Все пользователи (админ) |
+| GET    | 	/api/v1/users/me         | 	Текущий пользователь     |
+| GET    | 	/api/v1/users/{user_id}  | 	Пользователь по ID       |
+| PUT    | 	/api/v1/users/{user_id}  | 	Обновление пользователя  |
+| PUT    | 	/api/v1/users/me/chat-id | 	Обновление chat_id       |
+| DELETE | 	/api/v1/users/{user_id}  | 	Удаление (админ)         |
 
-### 📊 Статистика (/habits)
+### 📋 Привычки (/api/v1/habits):
 
-| Метод	 | Эндпоинт	                | Описание            |
-|--------|--------------------------|---------------------|
-| GET	   | /habits/{user_id}/stats	 | Статистика привычек |
+| Метод  | 	Эндпоинт                                 | 	Описание             |
+|--------|-------------------------------------------|-----------------------|
+| POST   | 	/api/v1/habits/                          | 	Создание привычки    |
+| GET    | 	/api/v1/habits/                          | 	Список привычек      |
+| GET    | 	/api/v1/habits/{habit_id}                | 	Привычка по ID       |
+| PUT    | 	/api/v1/habits/{habit_id}                | 	Обновление           |
+| DELETE | 	/api/v1/habits/{habit_id}                | 	Удаление             |
+| POST   | 	/api/v1/habits/{habit_id}/complete       | 	Отметка выполнения   |
+| POST   | 	/api/v1/habits/{habit_id}/skip           | 	Пропуск              |
+| POST   | 	/api/v1/habits/{habit_id}/complete-early | 	Досрочное завершение |
+| POST   | 	/api/v1/habits/{habit_id}/reset          | 	Сброс прогресса      |
+| POST   | 	/api/v1/habits/{habit_id}/activate       | 	Активация            |
+| GET    | 	/api/v1/habits/{habit_id}/progress       | 	Прогресс             |
+| GET    | 	/api/v1/habits/{habit_id}/streak         | 	Стрик                |
+| POST   | 	/api/v1/habits/check-21-days             | 	Проверка 21 дня      |
 
-### Примеры запросов
+### 📊 Статистика (/api/v1/stats):
 
-Создание пользователя:
+| Метод | 	Эндпоинт                                 | 	Описание           |
+|-------|-------------------------------------------|---------------------|
+| GET   | 	/api/v1/stats/overall                    | 	Общая статистика   |
+| GET   | 	/api/v1/stats/habits/{habit_id}	         | Статистика привычки |
+| GET   | 	/api/v1/stats/habits/{habit_id}/progress | 	Прогресс           |
+| GET   | 	/api/v1/stats/habits/{habit_id}/history  | 	История            |
 
+### ⏰ Напоминания (/api/v1/reminders):
+
+| Метод | 	Эндпоинт                  | 	Описание                 |
+|-------|----------------------------|---------------------------|
+| POST  | 	/api/v1/reminders/test    | 	Тест напоминания (админ) |
+| POST  | 	/api/v1/reminders/run-now | 	Запуск рассылки (админ)  |
+
+### Примеры запросов:
+
+Логин и получение токена
 ```
-curl -X POST "http://localhost:8000/users/" \
+curl -X POST "http://localhost:8000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"user_id": 123456789, "username": "john_doe", "chat_id": 987654321}'
+  -d '{"max_user_id": 12345, "chat_id": 67890, "username": "john_doe"}'
+
+Ответ:
+json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800,
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
 ```
 
-Создание привычки:
-
+Создание привычки
 ```
-curl -X POST "http://localhost:8000/habits/" \
+TOKEN="your_access_token"
+curl -X POST "http://localhost:8000/api/v1/habits/" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"user_id": 123456789, "name": "Утренняя зарядка", "description": "10 минут"}'
+  -d '{"name": "Утренняя зарядка", "description": "10 минут"}'
 ```
 
-Отметка выполнения:
-
+Отметка выполнения
 ```
-curl -X POST "http://localhost:8000/habits/1/complete"
-```
-
-Получение статистики:
-
-```
-curl "http://localhost:8000/habits/123456789/stats"
+curl -X POST "http://localhost:8000/api/v1/habits/1/complete" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
+Получение статистики
+```
+curl "http://localhost:8000/api/v1/stats/overall" \
+  -H "Authorization: Bearer $TOKEN"
+```
 ---
 
 ## 🤖 Работа с ботом
 
 ### Команды:
 
-| Команда	   | Описание             |
-|------------|----------------------|
-| /start	    | Главное меню         |
-| /habits	   | Список привычек      |
-| /add	      | Добавить привычку    |
-| /complete	 | Отметить выполнение  |
-| /finish	   | Досрочное завершение |
-| /stats	    | Статистика           |
+| Команда   | 	Описание             |
+|-----------|-----------------------|
+| /start    | 	Главное меню         |
+| /habits   | 	Список привычек      |
+| /add      | 	Добавить привычку    |
+| /complete | 	Отметить выполнение  |
+| /finish   | 	Досрочное завершение |
+| /stats    | 	Статистика           |
 
 ### Кнопки меню:
-
 ```
 📋 Мои привычки    
 ➕ Добавить привычку
@@ -515,20 +603,17 @@ curl "http://localhost:8000/habits/123456789/stats"
 📊 Статистика
 ```
 
-### Пример диалога
-
+### Пример диалога:
 ```
-👤 Пользователь: /start
+👤 Пользователь: Начать
 🤖 Бот: 🌟 Добро пожаловать в Трекер привычек!
 Выберите действие в меню ниже:
-
 📋 Мои привычки    
 ➕ Добавить привычку
 ✅ Отметить выполнение    
 🏁 Завершить привычку
 📊 Статистика
 ```
-
 ```
 👤 Пользователь: ➕ Добавить привычку
 🤖 Бот: ✏️ Введите название новой привычки:
@@ -543,7 +628,6 @@ curl "http://localhost:8000/habits/123456789/stats"
 
 💡 Отмечайте выполнение каждый день через меню!
 ```
-
 ```
 👤 Пользователь: ✅ Отметить выполнение
 🤖 Бот: ✅ **Привычка выполнена!**
@@ -552,50 +636,58 @@ curl "http://localhost:8000/habits/123456789/stats"
 📊 Прогресс: 1/21 дней
 💪 Осталось: 20 дней до цели
 ```
-
 ---
 
 ## 🧪 Тестирование
 
-### Запуск тестов
-
+Запуск тестов
 ```
 # Все тесты
-poetry run pytest -v
+pytest tests/ -v
 
 # С покрытием
-poetry run pytest --cov=backend --cov=bot -v
+pytest tests/ --cov=backend --cov=bot -v
+
+# С HTML отчётом
+pytest tests/ --cov=backend --cov=bot --cov-report=html
 
 # Только unit тесты
-poetry run pytest -m unit -v
+pytest tests/ -m unit -v
 
-# Только интеграционные тесты
-poetry run pytest -m integration -v
-
-# С HTML отчетом
-poetry run pytest --cov-report=html -v
+# Только интеграционные
+pytest tests/ -m integration -v
 ```
 
-### Результаты тестов
-
+Результаты тестов
 ```
-===================== 124 passed, 4 warnings in 16.78s =====================
+============================= 59 passed, 48 warnings in 2.32s ==============================
 
 ---------- coverage: platform linux, python 3.13.15-final-0 ----------
 Name                                    Stmts   Miss  Cover
 ---------------------------------------------------------------------
-backend/app/api/habits.py                  76      5    93%
-backend/app/api/stats.py                   26      0   100%
-backend/app/api/users.py                   41      0   100%
-backend/app/models/*                       43      0   100%
+backend/app/api/auth.py                    48      5    90%
+backend/app/api/habits.py                  86     24    72%
+backend/app/api/stats.py                   37      5    86%
+backend/app/api/users.py                   49     20    59%
+backend/app/models/habit.py               154     32    79%
+backend/app/models/user.py                 12      0   100%
 backend/app/schemas/*                      51      0   100%
-backend/app/services/user_service.py       22      0   100%
-...
-TOTAL                                     981    483    51%
+backend/app/utils/validators.py            22      1    95%
+backend/app/core/config.py                 37      0   100%
+---------------------------------------------------------------------
+TOTAL                                    2433   1323    46%
+Покрытие по модулям
+Модуль	Покрытие	Статус
+Backend API	59-90%	✅
+Backend Models	79-100%	✅
+Backend Schemas	86-100%	✅
+Backend Utils	41-95%	✅
+Bot Formatters	60%	✅
+Bot Validators	52%	✅
+Scheduler	33%	⚠️
 ```
 
-### Проверка качества кода
-
+Проверка качества кода
 ```
 # Проверка типов
 poetry run mypy .
@@ -613,16 +705,14 @@ poetry run black --check .
 poetry run isort --check-only .
 # SUCCESS
 ```
-
 ---
 
 ## 🔄 CI/CD
+GitHub Actions
 
-**GitHub Actions**<br>
 Проект настроен на автоматическую проверку кода через GitHub Actions.
 
 Что проверяется:
-
 ```
 ✅ Форматирование (Black)
 ✅ Сортировка импортов (Isort)
@@ -631,9 +721,8 @@ poetry run isort --check-only .
 ✅ Тесты (Pytest)
 ```
 
-```
 .github/workflows/ci.yml:
-
+```
 yaml
 name: CI - Code Check
 
@@ -643,97 +732,162 @@ jobs:
   check:
     runs-on: ubuntu-latest
     services:
-      postgres: ...
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgresql
+          POSTGRES_PASSWORD: postgresql
+          POSTGRES_DB: habit_tracker
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
       - run: poetry install
       - run: poetry run black --check .
       - run: poetry run isort --check-only .
-      - run: poetry run mypy . --no-error-summary
-      - run: poetry run pylint . --score=n
+      - run: poetry run mypy .
+      - run: poetry run pylint .
       - run: poetry run pytest -v
 ```
 
-### Badges статуса:
+Badges статуса:<br>
 [![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
 
 ---
 
-### 📁 Структура проекта
-
+## 📁 Структура проекта
 ```
 TrackingHabits/
 ├── backend/                     # Backend сервер
 │   ├── app/
 │   │   ├── api/                 # API эндпоинты
-│   │   │   ├── habits.py
-│   │   │   ├── users.py
-│   │   │   ├── stats.py
-│   │   │   └── reminders.py
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py          # JWT аутентификация
+│   │   │   ├── dependencies.py  # Общие зависимости
+│   │   │   ├── habits.py        # Привычки
+│   │   │   ├── reminders.py     # Напоминания
+│   │   │   ├── stats.py         # Статистика
+│   │   │   └── users.py         # Пользователи
 │   │   ├── core/                # Конфигурация
-│   │   │   └── config.py
+│   │   │   ├── __init__.py
+│   │   │   ├── config.py
+│   │   │   └── logging_config.py
 │   │   ├── models/              # SQLAlchemy модели
-│   │   │   ├── user.py
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py
 │   │   │   ├── habit.py
-│   │   │   └── habit_log.py
+│   │   │   ├── habit_log.py
+│   │   │   └── user.py
 │   │   ├── schemas/             # Pydantic схемы
-│   │   │   ├── user.py
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py
+│   │   │   ├── common.py
 │   │   │   ├── habit.py
-│   │   │   └── habit_log.py
+│   │   │   ├── habit_log.py
+│   │   │   ├── stats.py
+│   │   │   └── user.py
 │   │   ├── services/            # Бизнес-логика
-│   │   │   ├── user_service.py
-│   │   │   └── habit_service.py
+│   │   │   ├── __init__.py
+│   │   │   ├── habit_service.py
+│   │   │   └── user_service.py
 │   │   ├── utils/               # Утилиты
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py          # JWT утилиты
 │   │   │   ├── database.py
-│   │   │   └── keyboards.py
-│   │   ├── scheduler.py         # Планировщик
-│   │   └── main.py              # Точка входа
+│   │   │   ├── keyboards.py
+│   │   │   └── validators.py
+│   │   ├── __init__.py
+│   │   ├── main.py              # Точка входа
+│   │   └── scheduler.py         # Планировщик
 │   └── migrations/              # Alembic миграции
+│       ├── env.py
+│       ├── __init__.py
+│       ├── script.py.mako
+│       └── versions/
+│           ├── __init__.py
+│           └── 0ed0588d5583_initial_migration.py
 │
 ├── bot/                         # Чат-бот (MAX Platform)
-│   ├── core/
+│   ├── core/                    # Конфигурация
+│   │   ├── __init__.py
 │   │   └── config.py
 │   ├── handlers/                # Обработчики
-│   │   ├── message_handlers.py
+│   │   ├── __init__.py
 │   │   ├── callback_handlers.py
-│   │   └── command_handlers.py
+│   │   ├── command_handlers.py
+│   │   └── message_handlers.py
 │   ├── keyboards/               # Клавиатуры
+│   │   ├── __init__.py
 │   │   └── keyboards.py
 │   ├── services/                # Клиентские сервисы
+│   │   ├── __init__.py
 │   │   ├── api_client.py
+│   │   ├── auth_service.py
 │   │   └── habit_service.py
 │   ├── utils/                   # Утилиты бота
+│   │   ├── __init__.py
 │   │   ├── formatters.py
+│   │   ├── messages.py
 │   │   └── validators.py
+│   ├── __init__.py
+│   ├── bot_tokens.db            # SQLite (НЕ в Git)
+│   ├── database.py              # TokenDB
 │   └── main.py                  # Точка входа
 │
-├── tests/                       # Тесты
+├── tests/                       # Тесты (59 тестов)
+│   ├── __init__.py
 │   ├── conftest.py
-│   ├── test_users.py
+│   ├── test_auth.py
+│   ├── test_bot.py
+│   ├── test_edge_cases.py
 │   ├── test_habits.py
+│   ├── test_integration.py
+│   ├── test_scheduler.py
 │   ├── test_stats.py
-│   └── ...
+│   ├── test_users.py
+│   └── test_validation.py
 │
+├── screenshots/                 # 19 скриншотов
+│   ├── QR-код.jpg
+│   ├── Выполнение привычки.jpg
+│   ├── Добавить привычку. Шаг 1.jpg
+│   ├── Добавить привычку. Шаг 2.jpg
+│   ├── Добавить привычку. Шаг 3.jpg
+│   ├── Завершить привычку досрочно. Шаг 1.jpg
+│   ├── Завершить привычку досрочно. Шаг 2.jpg
+│   ├── Мои привычки.jpg
+│   ├── Напоминания.jpg
+│   ├── Привычка уже отмечена сегодня.jpg
+│   ├── Пропуск привычки.jpg
+│   ├── Ссылка приглашение.jpg
+│   ├── Стартовая страница.jpg
+│   ├── Статистика. Конец.jpg
+│   ├── Статистика. Начало.jpg
+│   ├── Титульная страница.jpg
+│   └── Чат-бот.jpg
+│
+├── .github/workflows/
+│   └── ci.yml                   # CI/CD
 ├── docker-compose.yml           # Docker Compose
 ├── Dockerfile                   # Docker для backend
 ├── Dockerfile.bot               # Docker для bot
 ├── pyproject.toml               # Poetry конфиг
 ├── poetry.lock                  # Зависимости
 ├── mypy.ini                     # Mypy конфиг
+├── pytest.ini                   # Pytest конфиг
 ├── alembic.ini                  # Alembic конфиг
-├── .github/
-│   └── workflows/
-│       └── ci.yml               # CI/CD
+├── .env.example                 # Шаблон переменных
+├── .gitignore                   # Git ignore
+├── .dockerignore                # Docker ignore
+├── LICENSE                      # MIT License
 └── README.md                    # Документация
 ```
-
 ---
 
 ## 📖 Подробное описание работы бота и приложения
 
 ### 🎯 Общее описание
-
 ```
 Бот **Трекер привычек** — это полноценная система для формирования полезных привычек, 
 состоящая из двух основных компонентов: 
@@ -741,6 +895,17 @@ MAX-бота (на платформе MAX) и Backend-сервера (FastAPI).
 Бот помогает пользователям отслеживать ежедневные привычки по методу "21 день", 
 отправляет напоминания, показывает статистику и автоматически завершает привычки 
 при достижении цели.
+```
+
+### 🔐 JWT Аутентификация
+
+Все запросы к API защищены JWT токенами:
+```
+1. Пользователь логинится через /api/v1/auth/login
+2. Backend выдаёт access_token и refresh_token
+3. Бот сохраняет токены в SQLite (bot_tokens.db)
+4. При каждом запросе бот передаёт access_token
+5. Если токен истёк — бот автоматически обновляет его через refresh_token
 ```
 
 ### 🤖 Как работает бот
@@ -757,58 +922,48 @@ MAX-бота (на платформе MAX) и Backend-сервера (FastAPI).
 ```
 Когда пользователь впервые запускает бота (Начать), 
 происходит автоматическая регистрация:
-Бот получает user_id и chat_id из MAX.
-Отправляет запрос на Backend для создания пользователя.
-Сохраняет пользователя в базу данных.
-Отправляет приветственное сообщение с главным меню.
+1. Бот получает max_user_id и chat_id из MAX.
+2. Отправляет запрос на Backend для создания пользователя.
+3. Backend возвращает JWT токены.
+4. Бот сохраняет токены в SQLite.
+5. Отправляет приветственное сообщение с главным меню.
 ```
 
 Главное меню
 ```
 После регистрации пользователь видит главное меню с кнопками:
-
 📋 Мои привычки    
 ➕ Добавить привычку
 ✅ Отметить выполнение    
 🏁 Завершить привычку
 📊 Статистика
-
-Каждая кнопка запускает определённое действие.
 ```
+
+> Каждая кнопка запускает определённое действие.
 
 ### 📋 Управление привычками
 
 Добавление привычки
 ```
 Как это работает:
-Пользователь нажимает кнопку «➕ Добавить привычку».
-Бот запрашивает название привычки.
-Пользователь вводит название (например, «Утренняя зарядка»).
-Бот отправляет запрос на Backend.
-Backend создаёт привычку в базе данных со статусом is_active = true и days_completed = 0.
-Бот подтверждает создание и показывает цель (21 день).
-```
-
-Пример диалога:
-```
-👤 Пользователь: ➕ Добавить привычку
-🤖 Бот: ✏️ Введите название новой привычки:
-👤 Пользователь: Утренняя зарядка
-🤖 Бот: ✅ Привычка добавлена! Цель: 21 дней.
+1. Пользователь нажимает кнопку «➕ Добавить привычку».
+2. Бот запрашивает название привычки.
+3. Пользователь вводит название (например, «Утренняя зарядка»).
+4. Бот отправляет POST запрос на /api/v1/habits/ с JWT.
+5. Backend создаёт привычку в базе данных со статусом is_active = true и days_completed = 0.
+6. Бот подтверждает создание и показывает цель (21 день).
 ```
 
 Просмотр привычек
 ```
 Как это работает:
-Пользователь нажимает кнопку «📋 Мои привычки».
-Бот запрашивает у Backend список привычек пользователя.
-Backend возвращает активные привычки.
-Бот форматирует список с прогрессом и статусами.
-Показывает пользователю.
-```
+1. Пользователь нажимает кнопку «📋 Мои привычки».
+2. Бот запрашивает у Backend список привычек пользователя.
+3. Backend возвращает активные привычки.
+4. Бот форматирует список с прогрессом и статусами.
+5. Показывает пользователю.
 
 Пример вывода:
-```
 📋 Ваши привычки
 1. ✅ Утренняя зарядка
    Прогресс: 15/21 дней
@@ -821,136 +976,49 @@ Backend возвращает активные привычки.
 Отметка выполнения
 ```
 Как это работает:
-Пользователь нажимает кнопку «✅ Отметить выполнение».
-Бот получает список активных привычек.
-Для каждой привычки отправляет отдельное сообщение с кнопками:
-✅ Выполнено
-❌ Пропустить
-🏁 Завершить досрочно
-Пользователь выбирает действие.
-Бот отправляет запрос на Backend.
-Backend обновляет прогресс и создаёт лог.
-```
-
-Логика отметки выполнения:
-```
-python
-def mark_completed(habit):
-    # Проверка, выполнялась ли сегодня
-    if habit.last_completed == today:
-        return "Уже отмечено сегодня"
-    
-    # Проверка пропуска дней
-    if habit.last_updated < today - 1 day:
-        habit.days_completed = 0  # Сброс прогресса
-    
-    # Увеличение прогресса
-    habit.days_completed += 1
-    habit.last_completed = today
-    
-    # Проверка достижения цели
-    if habit.days_completed >= 21:
-        habit.is_active = False
-        habit.completed_at = now()
-        return "🎉 Поздравляю! Привычка сформирована!"
-    
-    return f"✅ Прогресс: {habit.days_completed}/21"
-```
-
-Пропуск выполнения
-```
-Как это работает:
-Пользователь нажимает кнопку «❌ Пропустить».
-Бот отправляет запрос на Backend.
-Backend сбрасывает days_completed = 0.
-Создаёт лог с completed = false.
-Показывает сообщение о сбросе прогресса.
+1. Пользователь нажимает кнопку «✅ Отметить выполнение».
+2. Бот получает список активных привычек.
+3. Для каждой привычки отправляет отдельное сообщение с кнопками:
+   - ✅ Выполнено
+   - ❌ Пропустить
+   - 🏁 Завершить досрочно
+4. Пользователь выбирает действие.
+5. Бот отправляет POST запрос на /api/v1/habits/{id}/complete.
+6. Backend обновляет прогресс и создаёт лог.
 ```
 
 ### 📋 Механизм сброса привычки
 
+Ручной пропуск (mark_skipped)
 ```
-Сброс происходит в двух случаях:
-* Пользователь нажал кнопку «❌ Пропустить» — ручной сброс
-* Пользователь пропустил более 1 дня — автоматический сброс
-```
+Пользователь нажал кнопку «❌ Пропустить»:
+1. Проверка, что привычка существует и активна.
+2. days_completed = 0 — сброс прогресса.
+3. last_completed = None — очистка даты последнего выполнения.
+4. Создаётся лог с completed = False.
 
-🧠 Логика сброса в коде
-
-Ручной пропуск (mark_skipped). Пользователь нажал кнопку «❌ Пропустить»
-```
-Что происходит:
-Проверка, что привычка существует и активна
-days_completed = 0 — сброс прогресса
-last_completed = None — очистка даты последнего выполнения
-Создаётся лог с completed = False
-```
-
-Автоматический сброс при пропуске дня (mark_completed). Пользователь пропустил более 1 дня
-```
-Что происходит:
-Проверка, что привычка существует и активна
-Проверка, выполнялась ли сегодня
-Если last_updated старше чем 1 день → days_completed = 0
-Увеличение прогресса на 1
-Проверка достижения 21 дня
-```
-
-📊 Пример работы
-
-Пример 1: Ручной пропуск
-```
+Пример: Ручной пропуск
 День 1: ✅ Выполнено → days_completed = 1
 День 2: ✅ Выполнено → days_completed = 2
 День 3: ❌ Пропустить → days_completed = 0
 День 4: ✅ Выполнено → days_completed = 1 (начало заново)
-```
-
 Пример 2: Автоматический сброс (пропуск > 1 дня)
 ```
-День 1: ✅ Выполнено → days_completed = 1, last_updated = 01.08
-День 2: ✅ Выполнено → days_completed = 2, last_updated = 02.08
-День 3: (ничего не делал) → last_updated = 02.08
-День 4: (ничего не делал) → last_updated = 02.08
+
+Автоматический сброс при пропуске дня
+```
+Пользователь пропустил более 1 дня:
+1. При следующем выполнении проверяется last_completed.
+2. Если прошло > 1 дня — days_completed = 0.
+3. Затем +1 за текущее выполнение.
+
+Пример: Автоматический сброс (пропуск > 1 дня)
+День 1: ✅ Выполнено → days_completed = 1, last_completed = 01.09
+День 2: ✅ Выполнено → days_completed = 2, last_completed = 02.09
+День 3: (ничего не делал)
+День 4: (ничего не делал)
 День 5: ✅ Выполнено → days_completed = 0 (сброс!), затем +1 = 1
 ```
-
-🔄 Полный цикл
-
-```
-1. Пользователь создаёт привычку
-   ↓
-2. Ежедневно отмечает выполнение → days_completed++
-   ↓
-3. Если пропустил день → days_completed = 0
-   ↓
-4. Начинает заново
-   ↓
-5. При достижении 21 дня → привычка завершается
-```
-
-Система сбрасывает прогресс до 0 при любом пропуске, 
-чтобы пользователь начинал заново. 
-Это соответствует методу 21 дня. 🎯
-
->Важно: Пропуск обнуляет прогресс, но не удаляет привычку. 
-> Пользователь может начать заново в любой день.
-
-Досрочное завершение
-```
-Как это работает:
-Пользователь нажимает кнопку «🏁 Завершить досрочно».
-Бот отправляет запрос на Backend.
-Backend устанавливает:
-is_active = false
-completed_early = true
-completed_at = now()
-days_completed = 21 (для статистики)
-Показывает сообщение о досрочном завершении.
-```
-
->Когда использовать: Если пользователь уверен, что привычка сформировалась раньше 21 дня, 
-> или хочет переключиться на другую привычку.
 
 ### 📊 Статистика и аналитика
 
@@ -958,72 +1026,36 @@ days_completed = 21 (для статистики)
 ```
 При нажатии кнопки «📊 Статистика» пользователь видит:
 Общая информация:
-Всего привычек
-Активных привычек
-Завершённых привычек
-По каждой привычке:
-Название и статус
-Прогресс (дней выполнено / всего)
-Лучшая серия (стрик)
-Эффективность (процент выполненных дней)
-Последние 7 дней (визуальный календарь)
-```
+- Всего привычек
+- Активных привычек
+- Завершённых привычек
+- Всего выполнено дней
+- Лучшая серия (стрик)
+- Эффективность (процент выполненных дней)
 
-Как рассчитывается статистика
-```
-python
-def get_stats(habit):
-    # 1. Лучшая серия
-    best_streak = 0
-    current_streak = 0
-    
-    for log in logs:
-        if log.completed:
-            current_streak += 1
-            best_streak = max(best_streak, current_streak)
-        else:
-            current_streak = 0
-    
-    # 2. Эффективность
-    total_logs = len(logs)
-    completed_logs = sum(1 for log in logs if log.completed)
-    efficiency = (completed_logs / total_logs) * 100
-    
-    # 3. Последние 7 дней
-    last_7_days = []
-    for log in logs[:7]:
-        last_7_days.append({
-            "date": log.date.strftime("%d.%m"),
-            "completed": log.completed
-        })
-```
-
-Пример вывода статистики
-```
+Пример вывода статистики:
 📊 Ваша статистика
 📌 Всего привычек: 5
 ✅ Активных: 3
 🏁 Завершено: 2
-📌 Утренняя зарядка
-   Статус: ✅ Активна
-   Прогресс: 15/21 дней
-   🔥 Лучшая серия: 7 дней
-   📈 Эффективность: 75%
-   📅 Неделя: ✅✅⬜✅✅✅⬜
+📅 Всего выполнено дней: 45
+🔥 Лучшая серия: 7 дней
+📈 Эффективность: 75%
+⏰ Напоминания
 ```
 
-### ⏰ Напоминания
+### Как работают напоминания
 
-Как работают напоминания
 ```
 Бот автоматически отправляет напоминания дважды в день:
-09:00 — утреннее напоминание
-21:00 — вечернее напоминание
+- 09:00 — утреннее напоминание
+- 21:00 — вечернее напоминание
+
 Логика работы:
-Планировщик (APScheduler) запускает задачу в указанное время.
-Backend получает список всех пользователей с активными привычками.
-Для каждого пользователя формируется сообщение со списком привычек.
-Сообщение отправляется через Bot API.
+1. Планировщик (APScheduler) запускает задачу в указанное время.
+2. Backend получает список всех пользователей с активными привычками.
+3. Для каждого пользователя формируется сообщение со списком привычек.
+4. Сообщение отправляется через Bot API.
 ```
 
 Формат напоминания
@@ -1031,133 +1063,86 @@ Backend получает список всех пользователей с а�
 📋 Ваши привычки на сегодня:
 1. Утренняя зарядка ✅ (15/21 дн.)
 2. Чтение книги ❌ (7/21 дн.)
+
 ⚠️ Не забывайте отмечать выполнение привычек!
 ❤️ Для отметки выполнения нажмите кнопку ниже:
+
 📋 Мои привычки
 ➕ Добавить привычку
 ✅ Отметить выполнение
 🏁 Завершить привычку
 📊 Статистика
 ```
+---
 
-### 🗄️ Backend и база данных
+## 🗄 Backend и база данных
 
 Архитектура Backend
 ```
 Backend построен на FastAPI и предоставляет REST API для бота:
-API Routes — обработка HTTP запросов
-Services — бизнес-логика
-Models — SQLAlchemy модели для работы с БД
-Scheduler — планировщик напоминаний
+- API Routes — обработка HTTP запросов
+- Services — бизнес-логика
+- Models — SQLAlchemy модели для работы с БД
+- Scheduler — планировщик напоминаний
+- Auth — JWT аутентификация
 ```
 
-Структура базы данных
+Структура базы данных:
+
+Таблица users
 ```
-Таблица users:
 sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE,      -- Telegram user_id
-    chat_id INTEGER,             -- Telegram chat_id
-    username VARCHAR,
-    created_at TIMESTAMP
+    max_user_id INTEGER UNIQUE NOT NULL,  -- ID из MAX
+    chat_id INTEGER NOT NULL,             -- chat_id для отправки
+    username VARCHAR(255),
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
+```
 
-Таблица habits:
+Таблица habits
+```
 sql
 CREATE TABLE habits (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(user_id),
-    name VARCHAR,
-    description VARCHAR,
-    created_at TIMESTAMP,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
+    completed_early BOOLEAN DEFAULT FALSE,
     days_completed INTEGER DEFAULT 0,
     max_days INTEGER DEFAULT 21,
     last_completed DATE,
     completed_at TIMESTAMP,
-    completed_early BOOLEAN DEFAULT FALSE
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
 
-Таблица habit_logs:
+CREATE INDEX ix_habits_user_active ON habits(user_id, is_active);
+```
+
+Таблица habit_logs
+```
 sql
 CREATE TABLE habit_logs (
     id SERIAL PRIMARY KEY,
-    habit_id INTEGER REFERENCES habits(id),
-    date DATE DEFAULT CURRENT_DATE,
-    completed BOOLEAN DEFAULT FALSE
+    habit_id INTEGER REFERENCES habits(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    UNIQUE(habit_id, date)
 );
-```
 
-Правило 21 дня
+CREATE INDEX ix_habit_logs_date_completed ON habit_logs(date, completed);
 ```
-Как это работает:
-Пользователь создаёт привычку с целью 21 день.
-Каждый день отмечает выполнение.
-При пропуске > 1 дня прогресс сбрасывается.
-При достижении 21 дня привычка завершается автоматически.
-Пользователь получает поздравление
-```
+---
 
->Почему 21 день?<br>
->Согласно исследованиям, для формирования новой привычки требуется в среднем 21 день. 
->Этот метод широко используется в психологии и саморазвитии.
-
-
-### 🔄 Полный цикл работы приложения
-
-1. Создание привычки
-```
-Пользователь → Бот → Backend → База данных → Backend → Бот → Пользователь
-    1           2       3            4           5       6           7
-Пользователь нажимает "➕ Добавить привычку".
-Бот запрашивает название.
-Пользователь вводит название.
-Бот отправляет POST запрос на /habits/
-Backend создаёт запись в БД.
-Backend возвращает данные привычки.
-Бот показывает подтверждение.
-```
-
-Отметка выполнения
-```
-Пользователь → Бот → Backend → База данных → Backend → Бот → Пользователь
-    1           2       3            4           5       6           7
-Пользователь нажимает "✅ Отметить выполнение".
-Бот показывает список привычек.
-Пользователь выбирает привычку и нажимает "✅ Выполнено".
-Бот отправляет POST запрос на /habits/{id}/complete
-Backend обновляет прогресс и создаёт лог.
-Backend возвращает обновлённые данные.
-Бот показывает результат.
-```
-
-Получение статистики
-```
-Пользователь → Бот → Backend → База данных → Backend → Бот → Пользователь
-    1           2       3            4           5       6           7
-Пользователь нажимает "📊 Статистика".
-Бот отправляет GET запрос на /habits/{user_id}/stats
-Backend запрашивает данные из БД.
-Backend рассчитывает статистику.
-Backend возвращает данные.
-Бот форматирует статистику.
-Пользователь видит результат.
-```
-
-Ежедневные напоминания
-```
-Scheduler → Backend → База данных → Backend → Bot API → Пользователь
-    1           2           3           4          5           6
-APScheduler запускает задачу в 09:00 или 21:00.
-Backend запрашивает пользователей с активными привычками.
-База данных возвращает список.
-Backend формирует сообщения.
-Backend отправляет сообщения через Bot API.
-Пользователь получает напоминание.
-```
-
-### 🛡️ Безопасность и надёжность
+## 🛡 Безопасность и надёжность
 
 Обработка ошибок
 ```
@@ -1171,136 +1156,40 @@ Backend отправляет сообщения через Bot API.
 ✅ Использование параметризованных SQL-запросов
 ✅ Валидация входных данных через Pydantic схемы
 ✅ Хранение токена бота в переменных окружения
+✅ JWT токены с ограниченным сроком действия
 ```
 
 Отказоустойчивость
 ```
-✅ Повторные попытки при сбоях (retry)
+✅ Повторные попытки при сбоях (tenacity retry)
 ✅ Автоматическое восстановление соединения с БД
 ✅ Graceful shutdown при остановке
 ```
-
-### 📱 Примеры взаимодействия
-
-Пример 1: Полный цикл привычки
-```
-День 1:
-👤: Начать
-🤖: Добро пожаловать! Выберите действие.
-👤: ➕ Добавить привычку
-🤖: Введите название:
-👤: Утренняя зарядка
-🤖: ✅ Привычка добавлена! Цель: 21 дней.
-
-День 1-20:
-👤: ✅ Отметить выполнение
-🤖: Выберите привычку:
-👤: Утренняя зарядка → ✅ Выполнено
-🤖: ✅ Прогресс: 1/21... 20/21
-
-День 21:
-👤: ✅ Отметить выполнение
-🤖: ✅ Прогресс: 21/21
-🤖: 🎉 Поздравляю! Привычка сформирована!
-```
-
-Пример 2: Пропуск дня
-```
-День 5:
-👤: ✅ Отметить выполнение
-🤖: ✅ Прогресс: 5/21
-День 6 (пропуск):
-(Пользователь ничего не делает)
-День 7:
-👤: ✅ Отметить выполнение
-🤖: ⚠️ Был пропущен день. Прогресс сброшен до 0.
-🤖: ✅ Прогресс: 1/21
-```
-
-Пример 3: Досрочное завершение
-```
-👤: 🏁 Завершить привычку
-🤖: Выберите привычку:
-👤: Чтение книги → 🏁 Завершить досрочно
-🤖: 🏁 Привычка завершена досрочно!
-📊 Прогресс: 21/21 дней
-🎉 Отличная работа!
-```
-
-### 🔧 Технические детали
-
-Используемые технологии
-
-| Компонент	   | Технология   | Назначение           |
-|--------------|--------------|----------------------|
-| Backend	     | FastAPI	     | Веб-фреймворк        |
-| База данных	 | PostgreSQL	  | Хранение данных      |
-| ORM	         | SQLAlchemy	  | Работа с БД          |
-| Бот	         | MAX API	     | MAX интеграция       |
-| Планировщик	 | APScheduler	 | Напоминания          |
-| Миграции	    | Alembic	     | Управление схемой БД |
-
-Переменные окружения
-```
-# База данных
-DATABASE_URL=postgresql://user:pass@host:5432/db
-# Бот
-MAX_BOT_TOKEN=your_bot_token
-WEBHOOK_URL=https://your-domain.com/webhook
-# Безопасность
-SECRET_KEY=your_secret_key
-ALGORITHM=HS256
-```
-
-### 📈 Масштабирование и производительность
-
-Оптимизация запросов
-```
-✅ Использование индексов в БД
-✅ Пагинация для больших списков
-✅ Кэширование часто запрашиваемых данных
-```
-
-Асинхронность
-```
-✅ Все запросы к API асинхронные
-✅ Параллельная отправка напоминаний
-✅ Нет блокировок при обработке
-```
-
-Docker контейнеризация
-```
-✅ Изоляция компонентов
-✅ Лёгкое масштабирование
-✅ Единая среда разработки
-```
-
-### 🎯 Итог
-```
-Бот **Трекер привычек** — это полноценная система для формирования полезных привычек, которая:
-**Автоматизирует процесс** — пользователь просто отмечает выполнение, всё остальное делает бот.
-**Мотивирует пользователя** — статистика, серии, напоминания.
-**Надёжна и масштабируема** — современный стек технологий.
-**Проста в использовании** — интуитивный интерфейс через MAX.
-```
-
->### Метод 21 дня работает! 🎯
-
 ---
 
 ## 👥 Вклад в проект
 
-### Как помочь
-
+Как помочь
 ```
-Создать ветку (git checkout -b feature/amazing-feature)
-Внести изменения
-Запустить проверки
-Создать Pull Request
+# Создать ветку
+git checkout -b feature/amazing-feature
+
+# Внести изменения
+git add .
+git commit -m "feat: add amazing feature"
+
+# Запустить проверки
+poetry run black .
+poetry run isort .
+poetry run mypy .
+poetry run pylint .
+poetry run pytest -v
+
+# Создать Pull Request
+git push origin feature/amazing-feature
 ```
 
-### Требования к коду
-
+Требования к коду
 ```
 # Проверка перед коммитом
 poetry run black .              # Форматирование
@@ -1309,23 +1198,18 @@ poetry run mypy .               # Проверка типов
 poetry run pylint .             # Качество кода
 poetry run pytest -v            # Тесты
 ```
-
 ---
 
 ## 📄 Лицензия
 
->Этот проект распространяется под лицензией MIT.<br>
->Подробнее см. файл LICENSE.
-
+> Этот проект распространяется под лицензией MIT.<br>
+> Подробнее см. файл LICENSE.
 ---
 
 ## 📞 Контакты
+Автор: Zinnurov Lenar
 
-Автор: **Zinnurov Lenar**
-
-Email:<br> 
-zinnurov.lenar@gmail.com<br>
-Zinnurov.lenar.1981@yandex.ru
+Email: zinnurov.lenar@gmail.com
 
 Telegram: @Zinnurov_Lenar
 
@@ -1337,18 +1221,18 @@ GitHub: Lenar24
 
 ## 🙏 Благодарности
 
-FastAPI - За отличный фреймворк
+FastAPI — За отличный фреймворк
 
-MAX API - За платформу для чат-ботов
+MAX API — За платформу для чат-ботов
 
-SQLAlchemy - За мощный ORM
+SQLAlchemy — За мощный ORM
+
+PostgreSQL — За надёжную базу данных
+
+APScheduler — За планировщик задач
 
 ---
 
-<br>
-
-<div align="center">
-Сделано с ❤️ для формирования полезных привычек
-</div>
+<div align="center"> Сделано с ❤️ для формирования полезных привычек </div>
 
 ---

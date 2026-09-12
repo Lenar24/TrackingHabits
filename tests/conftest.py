@@ -1,240 +1,236 @@
 """
-Конфигурация для тестов с использованием SQLite в памяти.
-Все тесты изолированы и не влияют друг на друга.
+Общие фикстуры для всех тестов.
 """
 
-from datetime import date
-
 import pytest
+from datetime import date, datetime, timezone
+from typing import Generator
+
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from backend.app.main import app
-from backend.app.models import Habit, User
-from backend.app.utils.database import Base, get_db
-
-# НАСТРОЙКА ТЕСТОВОЙ БАЗЫ ДАННЫХ
-
-TEST_DATABASE_URL = "sqlite:///./test.db"
-
-engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    pool_pre_ping=True,
-    echo=False,
-)
-
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from backend.app.models import Base, User, Habit, HabitLog
+from backend.app.utils.database import get_db
+from backend.app.utils.auth import create_access_token
+from backend.app.core.config import settings
 
 
-# ФУНКЦИИ УПРАВЛЕНИЯ ТАБЛИЦАМИ
+# ============ DATABASE FIXTURES ============
 
+@pytest.fixture(scope="function")
+def db_engine():
+    """Создаёт тестовый движок SQLite в памяти."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
-def create_tables():
-    """Создает все таблицы в тестовой БД"""
+    # Включаем foreign keys в SQLite
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     Base.metadata.create_all(bind=engine)
-
-
-def drop_tables():
-    """Удаляет все таблицы из тестовой БД"""
+    yield engine
     Base.metadata.drop_all(bind=engine)
 
 
-# ПЕРЕОПРЕДЕЛЕНИЕ ЗАВИСИМОСТЕЙ FASTAPI
-
-
-def override_get_db():
-    """Переопределяет зависимость get_db для использования тестовой БД"""
-    db = TestingSessionLocal()
+@pytest.fixture(scope="function")
+def db_session(db_engine) -> Generator[Session, None, None]:
+    """Создаёт тестовую сессию БД."""
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    session = SessionLocal()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-# ФИКСТУРЫ
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture(scope="function")
-def db_session():
-    """
-    Фикстура для тестовой сессии базы данных.
-    Создаёт таблицы перед тестом и удаляет после.
-    """
-    create_tables()
-
-    db = TestingSessionLocal()
-    try:
-        yield db
-        db.commit()
-    finally:
-        db.rollback()
-        db.close()
-        drop_tables()
-
-
-@pytest.fixture(scope="function")
-def client():
-    """
-    Фикстура для тестового клиента FastAPI.
-    ИСПОЛЬЗУЕТ ТУ ЖЕ БД, ЧТО И СЕССИЯ
-    """
-    create_tables()
-
-    def _override_get_db():
-        db = TestingSessionLocal()
+def client(db_session) -> TestClient:
+    """Создаёт тестовый клиент FastAPI."""
+    def override_get_db():
         try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = _override_get_db
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-    drop_tables()
-
-
-@pytest.fixture(scope="function")
-def client_with_db():
-    """
-    Альтернативная фикстура: клиент + сессия БД.
-    """
-    create_tables()
-
-    db = TestingSessionLocal()
-
-    def _override_get_db():
-        try:
-            yield db
+            yield db_session
         finally:
             pass
 
-    app.dependency_overrides[get_db] = _override_get_db
-
-    with TestClient(app) as test_client:
-        yield test_client, db
-
-    db.close()
-    drop_tables()
+    app.dependency_overrides[get_db] = override_get_db
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="function")
-def test_user_data():
-    """Фикстура с тестовыми данными пользователя"""
-    return {"user_id": 123456789, "username": "test_user", "chat_id": 987654321}
+# ============ USER FIXTURES ============
 
-
-@pytest.fixture(scope="function")
-def test_user(client):
-    """
-    Фикстура для тестового пользователя в БД.
-    Использует client для создания пользователя через API.
-    """
-    response = client.post("/users/", json={"user_id": 123456789, "username": "test_user", "chat_id": 987654321})
-    assert response.status_code == 200, f"Ошибка создания пользователя: {response.text}"
-    return response.json()
-
-
-@pytest.fixture(scope="function")
-def test_habit(client, test_user):
-    """Фикстура для тестовой привычки в БД"""
-    response = client.post(
-        "/habits/",
-        json={
-            "user_id": test_user["user_id"],
-            "name": "Тестовая привычка",
-            "description": "Описание тестовой привычки",
-        },
+@pytest.fixture
+def test_user(db_session) -> User:
+    """Создаёт тестового пользователя."""
+    user = User(
+        max_user_id=12345,
+        chat_id=67890,
+        username="test_user",
+        is_admin=False,
+        is_active=True,
     )
-    assert response.status_code == 200, f"Ошибка создания привычки: {response.text}"
-    return response.json()
-
-
-@pytest.fixture(scope="function")
-def test_habit_with_progress(client, test_user):
-    """Фикстура для привычки с прогрессом"""
-    # Создаём привычку
-    response = client.post("/habits/", json={"user_id": test_user["user_id"], "name": "Привычка с прогрессом"})
-    assert response.status_code == 200
-    habit = response.json()
-
-    # Отмечаем несколько дней
-    for _ in range(5):
-        client.post(f"/habits/{habit['id']}/complete")
-
-    return client.get(f"/habits/item/{habit['id']}").json()
-
-
-@pytest.fixture(scope="function")
-def test_habit_completed(client, test_user):
-    """Фикстура для завершённой привычки"""
-    # Создаём привычку
-    response = client.post("/habits/", json={"user_id": test_user["user_id"], "name": "Завершённая привычка"})
-    assert response.status_code == 200
-    habit = response.json()
-
-    # Отмечаем 21 день
-    for _ in range(21):
-        client.post(f"/habits/{habit['id']}/complete")
-
-    return client.get(f"/habits/item/{habit['id']}").json()
-
-
-@pytest.fixture(scope="function")
-def test_habit_log(client, test_habit):
-    """Фикстура для тестового лога привычки"""
-    response = client.post(f"/habits/{test_habit['id']}/complete")
-    assert response.status_code == 200
-    return response.json()
-
-
-@pytest.fixture(scope="function")
-def multiple_test_habits(client, test_user):
-    """Фикстура для нескольких привычек"""
-    habits = []
-    names = ["Привычка 1", "Привычка 2", "Привычка 3"]
-
-    for name in names:
-        response = client.post("/habits/", json={"user_id": test_user["user_id"], "name": name})
-        assert response.status_code == 200
-        habits.append(response.json())
-
-    return habits
-
-
-# МАРКЕРЫ ДЛЯ ТЕСТОВ
-
-
-def pytest_configure(config):
-    """Настройка маркеров для pytest"""
-    config.addinivalue_line("markers", "unit: marks tests as unit tests")
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
-    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')")
-    config.addinivalue_line("markers", "db: marks tests that require database")
-
-
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-
-
-def create_test_user_via_db(session, user_id=12345, chat_id=12345, username="test_user"):
-    """Вспомогательная функция для создания пользователя напрямую в БД"""
-    user = User(user_id=user_id, chat_id=chat_id, username=username)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 
-def create_test_habit_via_db(session, user_id, name="Тестовая привычка", days=0):
-    """Вспомогательная функция для создания привычки напрямую в БД"""
-    habit = Habit(user_id=user_id, name=name, max_days=21, days_completed=days, last_updated=date.today())
-    session.add(habit)
-    session.commit()
-    session.refresh(habit)
+@pytest.fixture
+def test_admin(db_session) -> User:
+    """Создаёт тестового администратора."""
+    admin = User(
+        max_user_id=99999,
+        chat_id=88888,
+        username="admin_user",
+        is_admin=True,
+        is_active=True,
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    return admin
+
+
+@pytest.fixture
+def test_user2(db_session) -> User:
+    """Создаёт второго пользователя."""
+    user = User(
+        max_user_id=54321,
+        chat_id=98765,
+        username="test_user2",
+        is_admin=False,
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+# ============ HABIT FIXTURES ============
+
+@pytest.fixture
+def test_habit(db_session, test_user) -> Habit:
+    """Создаёт тестовую привычку."""
+    habit = Habit(
+        user_id=test_user.id,
+        name="Утренняя зарядка",
+        description="15 минут",
+        max_days=21,
+        days_completed=0,
+        is_active=True,
+    )
+    db_session.add(habit)
+    db_session.commit()
+    db_session.refresh(habit)
     return habit
+
+
+@pytest.fixture
+def test_habit_completed_today(db_session, test_user) -> Habit:
+    """Создаёт привычку, выполненную сегодня."""
+    habit = Habit(
+        user_id=test_user.id,
+        name="Выполненная привычка",
+        description="Тест",
+        max_days=21,
+        days_completed=1,
+        last_completed=date.today(),
+        is_active=True,
+    )
+    db_session.add(habit)
+    db_session.commit()
+    db_session.refresh(habit)
+    return habit
+
+
+@pytest.fixture
+def test_habit_7_days(db_session, test_user) -> Habit:
+    """Создаёт привычку с 7 днями выполнения (для досрочного завершения)."""
+    habit = Habit(
+        user_id=test_user.id,
+        name="Привычка 7 дней",
+        description="Тест",
+        max_days=21,
+        days_completed=7,
+        last_completed=date.today(),
+        is_active=True,
+    )
+    db_session.add(habit)
+    db_session.commit()
+    db_session.refresh(habit)
+    return habit
+
+
+@pytest.fixture
+def test_habit_log(db_session, test_habit) -> HabitLog:
+    """Создаёт тестовый лог выполнения."""
+    log = HabitLog(
+        habit_id=test_habit.id,
+        date=date.today(),
+        completed=True,
+    )
+    db_session.add(log)
+    db_session.commit()
+    db_session.refresh(log)
+    return log
+
+
+# ============ AUTH FIXTURES ============
+
+@pytest.fixture
+def test_token(test_user) -> str:
+    """Создаёт JWT токен для тестового пользователя."""
+    return create_access_token({
+        "sub": str(test_user.id),
+        "user_id": test_user.id,
+        "max_user_id": test_user.max_user_id,
+        "chat_id": test_user.chat_id,
+    })
+
+
+@pytest.fixture
+def admin_token(test_admin) -> str:
+    """Создаёт JWT токен для администратора."""
+    return create_access_token({
+        "sub": str(test_admin.id),
+        "user_id": test_admin.id,
+        "max_user_id": test_admin.max_user_id,
+        "chat_id": test_admin.chat_id,
+    })
+
+
+@pytest.fixture
+def auth_headers(test_token) -> dict:
+    """Заголовки с JWT токеном."""
+    return {"Authorization": f"Bearer {test_token}"}
+
+
+@pytest.fixture
+def admin_headers(admin_token) -> dict:
+    """Заголовки с JWT токеном администратора."""
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+# ============ TIME FIXTURES ============
+
+@pytest.fixture
+def fixed_date():
+    """Фиксированная дата для тестов."""
+    return date(2026, 9, 12)
+
+
+@pytest.fixture
+def fixed_datetime():
+    """Фиксированное время для тестов."""
+    return datetime(2026, 9, 12, 12, 0, 0, tzinfo=timezone.utc)

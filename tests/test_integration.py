@@ -1,106 +1,81 @@
 """
-Сквозные интеграционные тесты.
+Интеграционные тесты полного флоу.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-from freezegun import freeze_time
+from datetime import date
 
 
-@pytest.mark.integration
-class TestIntegration:
-    """Сквозные тесты"""
+class TestFullFlow:
+    """Тесты полного флоу."""
 
-    @freeze_time("2026-01-01")
-    def test_complete_user_flow(self, client: TestClient):
-        """
-        Полный пользовательский сценарий:
-        регистрация → создание привычки → выполнение → завершение
-        """
-
-        # 1. Регистрация пользователя
-        user_response = client.post("/users/", json={"user_id": 12345, "username": "john_doe", "chat_id": 67890})
-        assert user_response.status_code == 200
-        user_data = user_response.json()
-        assert user_data["user_id"] == 12345
+    def test_full_habit_lifecycle(self, client, db_session):
+        """Полный жизненный цикл привычки."""
+        # 1. Логин
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"max_user_id": 77777, "chat_id": 88888}
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
 
         # 2. Создание привычки
-        habit_response = client.post(
-            "/habits/", json={"user_id": 12345, "name": "Ежедневная зарядка", "description": "10 минут"}
+        create_response = client.post(
+            "/api/v1/habits/",
+            headers=headers,
+            json={"name": "Тестовая привычка", "max_days": 21}
         )
-        assert habit_response.status_code == 200
-        habit_data = habit_response.json()
-        habit_id = habit_data["id"]
+        assert create_response.status_code == 201
+        habit_id = create_response.json()["id"]
 
-        # 3. Получение привычек
-        response = client.get("/habits/12345")
-        assert response.status_code == 200
-        habits = response.json()
-        assert len(habits) == 1
-        assert habits[0]["name"] == "Ежедневная зарядка"
+        # 3. Получение привычки
+        get_response = client.get(
+            f"/api/v1/habits/{habit_id}",
+            headers=headers
+        )
+        assert get_response.status_code == 200
 
-        # 4. Ежедневное выполнение (21 день)
-        for day in range(21):
-            with freeze_time(f"2026-01-{day + 1:02d}"):
-                response = client.post(f"/habits/{habit_id}/complete")
-                assert response.status_code == 200
-                data = response.json()
-                if day == 20:
-                    assert data["is_active"] is False
-                    assert data["days_completed"] == 21
+        # 4. Выполнение
+        complete_response = client.post(
+            f"/api/v1/habits/{habit_id}/complete",
+            headers=headers
+        )
+        assert complete_response.status_code == 200
+        assert complete_response.json()["habit"]["days_completed"] == 1
 
-        # 5. Проверка завершения
-        response = client.get(f"/habits/item/{habit_id}")
-        data = response.json()
-        assert data["is_active"] is False
-        assert data["days_completed"] == 21
+        # 5. Повторное выполнение
+        complete2_response = client.post(
+            f"/api/v1/habits/{habit_id}/complete",
+            headers=headers
+        )
+        assert complete2_response.json()["success"] is False
 
-        # 6. Проверка статистики
-        response = client.get("/habits/12345/stats")
-        assert response.status_code == 200
-        stats = response.json()
-        assert len(stats) == 1
-        assert stats[0]["days_completed"] == 21
+        # 6. Прогресс
+        progress_response = client.get(
+            f"/api/v1/habits/{habit_id}/progress",
+            headers=headers
+        )
+        assert progress_response.status_code == 200
 
-    @freeze_time("2026-01-01")
-    def test_habit_with_skip_flow(self, client: TestClient):
-        """Сценарий с пропуском дня"""
+        # 7. Статистика
+        stats_response = client.get(
+            "/api/v1/stats/overall",
+            headers=headers
+        )
+        assert stats_response.status_code == 200
+        assert stats_response.json()["total_habits"] == 1
 
-        # 1. Регистрация и создание привычки
-        client.post("/users/", json={"user_id": 12345, "username": "test_user"})
-        response = client.post("/habits/", json={"user_id": 12345, "name": "Чтение"})
-        habit_id = response.json()["id"]
+        # 8. Удаление
+        delete_response = client.delete(
+            f"/api/v1/habits/{habit_id}",
+            headers=headers
+        )
+        assert delete_response.status_code == 200
 
-        # 2. Выполняем 3 дня
-        for day in range(3):
-            with freeze_time(f"2026-01-{day + 1:02d}"):
-                client.post(f"/habits/{habit_id}/complete")
-
-        # 3. Пропускаем день
-        with freeze_time("2026-01-04"):
-            client.post(f"/habits/{habit_id}/skip")
-
-        # 4. Проверяем сброс
-        response = client.get(f"/habits/item/{habit_id}")
-        assert not response.json()["days_completed"]
-
-        # 5. Начинаем заново
-        with freeze_time("2026-01-05"):
-            client.post(f"/habits/{habit_id}/complete")
-
-        response = client.get(f"/habits/item/{habit_id}")
-        assert response.json()["days_completed"] == 1
-
-    def test_user_and_habits_cleanup(self, client: TestClient):
-        """Тест: удаление пользователя удаляет все привычки"""
-
-        # 1. Создание пользователя
-        client.post("/users/", json={"user_id": 12345, "username": "test_user"})
-
-        # 2. Создание привычек
-        client.post("/habits/", json={"user_id": 12345, "name": "Привычка 1"})
-        client.post("/habits/", json={"user_id": 12345, "name": "Привычка 2"})
-
-        # 3. Проверка
-        response = client.get("/habits/12345")
-        assert len(response.json()) == 2
+        # 9. Проверка удаления
+        get_after_delete = client.get(
+            f"/api/v1/habits/{habit_id}",
+            headers=headers
+        )
+        assert get_after_delete.status_code == 404

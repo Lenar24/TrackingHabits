@@ -75,21 +75,12 @@ def create_refresh_token(data: dict) -> str:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: Session = Depends(get_db)
 ) -> User:
     """
     Получение текущего пользователя из JWT токена.
-
-    Args:
-        credentials: HTTP заголовок с токеном
-        db: Сессия базы данных
-
-    Returns:
-        User: Объект пользователя
-
-    Raises:
-        HTTPException: 401 если токен невалидный
+    Поддерживает системные токены для внутренних вызовов.
     """
     token = credentials.credentials
     credentials_exception = HTTPException(
@@ -99,7 +90,6 @@ def get_current_user(
     )
 
     try:
-        # Декодируем токен с проверкой срока действия
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -107,7 +97,6 @@ def get_current_user(
             options={"verify_exp": True}
         )
 
-        # Проверяем тип токена
         token_type = payload.get("type")
         if token_type == "refresh":
             raise HTTPException(
@@ -116,11 +105,19 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Получаем user_id
         user_id_str = payload.get("sub")
         if not user_id_str:
             logger.warning("Token missing 'sub' claim")
             raise credentials_exception
+
+        # ✅ Поддержка системного токена
+        if user_id_str == "system":
+            logger.info("🔧 Системный токен — доступ разрешён")
+            system_user = db.query(User).filter(User.is_admin == True).first()
+            if not system_user:
+                logger.error("❌ Нет админа для системного токена")
+                raise credentials_exception
+            return system_user
 
         try:
             user_id = int(user_id_str)
@@ -128,7 +125,6 @@ def get_current_user(
             logger.warning(f"Invalid user_id format: {user_id_str}")
             raise credentials_exception
 
-        # Получаем пользователя
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
@@ -139,7 +135,6 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Проверяем активность пользователя
         if not user.is_active:
             logger.warning(f"Inactive user: {user_id}")
             raise HTTPException(

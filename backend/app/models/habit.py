@@ -340,16 +340,9 @@ class Habit(BaseModel):
         }
 
     def skip_today(self) -> dict:
-        """
-        Пропустить выполнение привычки за сегодня.
+        """Пропустить выполнение привычки за сегодня."""
+        from datetime import date
 
-        Returns:
-            dict: Результат операции
-                - success: bool
-                - message: str
-                - habit: Habit
-                - progress: str (прогресс в формате "X/Y")
-        """
         if not self.is_active:
             return {
                 "success": False,
@@ -366,13 +359,8 @@ class Habit(BaseModel):
                 "habit": self
             }
 
-        # Проверка пропуска дней
-        if self.last_completed:
-            days_since_last = (today - self.last_completed).days
-            if days_since_last > 1:
-                # Сброс прогресса при длительном пропуске
-                self.days_completed = 0
-
+        # ✅ СБРОС ПРОГРЕССА ВСЕГДА при пропуске
+        self.days_completed = 0
         self.last_completed = None
 
         return {
