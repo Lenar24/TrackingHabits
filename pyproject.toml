@@ -1,0 +1,215 @@
+[tool.poetry]
+name = "habit-tracker"
+version = "0.1.0"
+description = "Трекер привычек: FastAPI backend + MAX бот"
+authors = ["Zinnurov Lenar <zinnurov.lenar@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "backend" },
+    { include = "bot" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+
+# Web Framework
+fastapi = "^0.115.13"
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+
+# Database
+sqlalchemy = "^2.0.0"
+alembic = "^1.12.0"
+asyncpg = "^0.30.0"
+psycopg2-binary = "^2.9.9"
+
+# Validation
+pydantic = "^2.0.0"
+pydantic-settings = "^2.1.0"
+
+# Config
+python-dotenv = "^1.0.0"
+
+# JWT
+python-jose = {version = "^3.3.0", extras = ["cryptography"]}
+passlib = {version = "^1.7.4", extras = ["bcrypt"]}
+bcrypt = "^4.2.0"
+
+# Bot
+maxapi = "^1.2.1"
+
+# Scheduler
+apscheduler = "^3.10.0"
+pytz = "^2024.1"
+
+# HTTP
+httpx = "^0.27.0"
+
+# Retry
+tenacity = "^8.2.3"
+
+# Utils
+python-multipart = "^0.0.6"
+email-validator = "^2.1.0"
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "^8.0.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.23.0"
+freezegun = "^1.5.5"
+httpx = "^0.27.0"
+
+# Code Quality
+black = "^24.0.0"
+isort = "^5.13.0"
+pylint = "^3.3.0"
+mypy = "^1.13.0"
+flake8 = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# ИНСТРУМЕНТЫ
+
+# BLACK
+[tool.black]
+line-length = 120
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+# ISORT
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip = ["migrations", ".venv", "__pycache__"]
+known_first_party = ["backend", "bot"]
+known_third_party = [
+    "fastapi",
+    "sqlalchemy",
+    "alembic",
+    "pydantic",
+    "maxapi",
+    "httpx",
+    "apscheduler",
+]
+
+# PYLINT (ЕДИНЫЙ БЛОК!)
+[tool.pylint.main]
+ignore = ["migrations", ".venv", "__pycache__"]
+
+[tool.pylint.messages_control]
+disable = [
+    # Docstrings
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    # Design
+    "R0801",  # duplicate-code
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+    "R0914",  # too-many-locals
+    # Warnings
+    "W0718",  # broad-exception-caught
+    "W1203",  # logging-fstring-interpolation
+    "W0611",  # unused-import
+    "W0621",  # redefined-outer-name
+    "W0613",  # unused-argument
+    # Conventions
+    "C0301",  # line-too-long
+    "C0415",  # import-outside-toplevel
+    "C0121",  # singleton-comparison
+    "C1805",  # use-implicit-booleaness-not-comparison-to-zero
+    # Refactor
+    "R1731",  # consider-using-max-builtin
+    # Errors (отключаем для ORM)
+    "E1101",  # no-member
+]
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "db", "id", "pk", "e", "n", "x", "y"]
+
+[tool.pylint.design]
+max-args = 7
+max-locals = 20
+max-attributes = 10
+
+[tool.pylint.typecheck]
+generated-members = ["_", "objects", "DoesNotExist", "MultipleObjectsReturned"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+# PYTEST
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=backend",
+    "--cov=bot",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "auth: marks tests that require authentication",
+]
+
+# COVERAGE
+[tool.coverage.run]
+source = ["backend", "bot"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__init__.py",
+    "*/settings.py",
+    "*/manage.py",
+    "*/wsgi.py",
+    "*/asgi.py",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+    "if TYPE_CHECKING:",
+]
+ignore_errors = true
+show_missing = true
+skip_empty = true
