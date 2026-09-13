@@ -2,21 +2,21 @@
 Модуль является центральной точкой входа для всех Pydantic схем.
 """
 
-from .common import MessageResponse, ErrorResponse, PaginatedResponse
-from .auth import LoginRequest, TokenResponse, TokenData, RefreshTokenRequest
-from .user import UserBase, UserCreate, UserUpdate, UserResponse, UserWithHabits
+from .auth import LoginRequest, RefreshTokenRequest, TokenData, TokenResponse
+from .common import ErrorResponse, MessageResponse, PaginatedResponse
 from .habit import (
     HabitBase,
     HabitCreate,
-    HabitUpdate,
-    HabitResponse,
-    HabitProgressResponse,
-    HabitStreakResponse,
-    HabitHistoryResponse,
     HabitHistoryItem,
+    HabitHistoryResponse,
+    HabitProgressResponse,
+    HabitResponse,
+    HabitStreakResponse,
+    HabitUpdate,
 )
 from .habit_log import HabitLogBase, HabitLogResponse
 from .stats import DailyLog, HabitStats, OverallStats
+from .user import UserBase, UserCreate, UserResponse, UserUpdate, UserWithHabits
 
 __all__ = [
     # Common

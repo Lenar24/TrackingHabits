@@ -8,12 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
-from ..schemas.auth import LoginRequest, TokenResponse, RefreshTokenRequest
+from ..models import User
+from ..schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
 from ..schemas.common import MessageResponse
 from ..services import UserService
-from ..utils.database import get_db
 from ..utils.auth import create_access_token, create_refresh_token, get_current_user
-from ..models import User
+from ..utils.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +23,14 @@ router = APIRouter()
 
 # ✅ РОУТ 1: Логин
 @router.post("/login", response_model=TokenResponse)
-def login(
-    request: LoginRequest,
-    db: Session = Depends(get_db)
-):
+def login(request: LoginRequest, db: Session = Depends(get_db)):
     """
     Логин пользователя и выдача JWT токена.
     Если пользователь не существует — создаётся автоматически.
     """
     try:
         user = UserService.get_or_create_user(
-            db,
-            max_user_id=request.user_id,
-            username=request.username,
-            chat_id=request.chat_id
+            db, max_user_id=request.user_id, username=request.username, chat_id=request.chat_id
         )
 
         token_data = {
@@ -55,50 +49,34 @@ def login(
             access_token=access_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            refresh_token=refresh_token
+            refresh_token=refresh_token,
         )
 
     except Exception as e:
         logger.error(f"Login error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to login"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to login") from e
 
 
 # ✅ РОУТ 2: Обновление токена
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_token(
-    request: RefreshTokenRequest,
-    db: Session = Depends(get_db)
-):
+def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """
     Обновление access токена с использованием refresh токена.
     """
     try:
-        from jose import jwt, JWTError
+        from jose import JWTError, jwt
 
-        payload = jwt.decode(
-            request.refresh_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(request.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
         token_type = payload.get("type")
         if token_type != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
         user_id = int(payload.get("sub"))
         user = UserService.get_user_by_id(db, user_id)
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         token_data = {
             "sub": str(user.id),
@@ -110,23 +88,16 @@ def refresh_token(
         new_access_token = create_access_token(token_data)
 
         return TokenResponse(
-            access_token=new_access_token,
-            token_type="bearer",
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            access_token=new_access_token, token_type="bearer", expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
 
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
-        )
+    except JWTError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from e
 
 
 # ✅ РОУТ 3: Получение информации о текущем пользователе
 @router.get("/me")
-def get_me(
-    current_user: User = Depends(get_current_user)
-):
+def get_me(current_user: User = Depends(get_current_user)):
     """
     Получение информации о текущем пользователе.
     """
@@ -144,9 +115,7 @@ def get_me(
 
 # ✅ РОУТ 4: Выход
 @router.post("/logout", response_model=MessageResponse)
-def logout(
-    current_user: User = Depends(get_current_user)
-):
+def logout(current_user: User = Depends(get_current_user)):
     """
     Выход пользователя (клиентская сторона должна удалить токен).
     """

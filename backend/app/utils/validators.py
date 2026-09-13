@@ -39,7 +39,7 @@ def validate_username(username: Optional[str]) -> bool:
         return False
     if len(username) > 100:
         return False
-    if not re.match(r'^[\w\-_.@]+$', username):
+    if not re.match(r"^[\w\-_.@]+$", username):
         return False
     return True
 

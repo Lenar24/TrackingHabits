@@ -15,10 +15,10 @@ ENV_FILE = PROJECT_ROOT / ".env"
 
 if ENV_LOCAL.exists():
     load_dotenv(dotenv_path=ENV_LOCAL)
-    print(f"✅ Загружен .env.local")
+    print("✅ Загружен .env.local")
 else:
     load_dotenv(dotenv_path=ENV_FILE)
-    print(f"✅ Загружен .env")
+    print("✅ Загружен .env")
 
 
 class Settings:
@@ -29,10 +29,7 @@ class Settings:
     DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
     # Database
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgresql:postgresql@db:5432/habit_tracker"
-    )
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgresql:postgresql@db:5432/habit_tracker")
     DATABASE_POOL_SIZE = int(os.getenv("DATABASE_POOL_SIZE", "10"))
     DATABASE_MAX_OVERFLOW = int(os.getenv("DATABASE_MAX_OVERFLOW", "20"))
 
@@ -69,10 +66,7 @@ class Settings:
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    LOG_FORMAT = os.getenv(
-        "LOG_FORMAT",
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    LOG_FORMAT = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     LOG_FILE = os.getenv("LOG_FILE")
 
 

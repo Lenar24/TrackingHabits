@@ -5,12 +5,13 @@
 Реализует систему отслеживания привычек по методу "21 день".
 """
 
-from datetime import date, datetime, timedelta
-from typing import Optional, List, Dict, Any
 import logging
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from ..models import Habit, HabitLog, User
 from ..schemas import HabitCreate, HabitUpdate
@@ -47,16 +48,14 @@ class HabitService:
             raise ValueError("Название привычки не может быть пустым")
 
         if len(habit_data.name) > Habit.MAX_NAME_LENGTH:
-            raise ValueError(
-                f"Название привычки не может превышать {Habit.MAX_NAME_LENGTH} символов"
-            )
+            raise ValueError(f"Название привычки не может превышать {Habit.MAX_NAME_LENGTH} символов")
 
         # Проверка на дубликаты
-        existing = db.query(Habit).filter(
-            Habit.user_id == user_id,
-            Habit.name == habit_data.name.strip(),
-            Habit.is_active == True
-        ).first()
+        existing = (
+            db.query(Habit)
+            .filter(Habit.user_id == user_id, Habit.name == habit_data.name.strip(), Habit.is_active == True)
+            .first()
+        )
 
         if existing:
             raise ValueError("Привычка с таким названием уже существует")
@@ -67,7 +66,7 @@ class HabitService:
                 user_id=user_id,
                 name=habit_data.name.strip(),
                 description=habit_data.description.strip() if habit_data.description else None,
-                max_days=habit_data.max_days or Habit.MAX_DAYS_DEFAULT
+                max_days=habit_data.max_days or Habit.MAX_DAYS_DEFAULT,
             )
 
             db.add(db_habit)
@@ -83,13 +82,7 @@ class HabitService:
             raise
 
     @staticmethod
-    def get_habits(
-        db: Session,
-        user_id: int,
-        active_only: bool = True,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Habit]:
+    def get_habits(db: Session, user_id: int, active_only: bool = True, skip: int = 0, limit: int = 100) -> List[Habit]:
         """
         Получение списка привычек пользователя с пагинацией.
 
@@ -146,20 +139,14 @@ class HabitService:
             Optional[tuple[Habit, User]]: Кортеж (привычка, пользователь) или None
         """
         try:
-            result = db.query(Habit, User).join(User, Habit.user_id == User.id).filter(
-                Habit.id == habit_id
-            ).first()
+            result = db.query(Habit, User).join(User, Habit.user_id == User.id).filter(Habit.id == habit_id).first()
             return result
         except SQLAlchemyError as e:
             logger.error(f"❌ Ошибка БД при получении привычки {habit_id} с пользователем: {e}")
             raise
 
     @staticmethod
-    def update_habit(
-        db: Session,
-        habit_id: int,
-        habit_update: HabitUpdate
-    ) -> Optional[Habit]:
+    def update_habit(db: Session, habit_id: int, habit_update: HabitUpdate) -> Optional[Habit]:
         """
         Обновление привычки.
 
@@ -183,17 +170,13 @@ class HabitService:
                 if not habit_update.name.strip():
                     raise ValueError("Название привычки не может быть пустым")
                 if len(habit_update.name) > Habit.MAX_NAME_LENGTH:
-                    raise ValueError(
-                        f"Название не может превышать {Habit.MAX_NAME_LENGTH} символов"
-                    )
+                    raise ValueError(f"Название не может превышать {Habit.MAX_NAME_LENGTH} символов")
                 habit.name = habit_update.name.strip()
 
             if habit_update.description is not None:
                 if habit_update.description:
                     if len(habit_update.description) > Habit.MAX_DESCRIPTION_LENGTH:
-                        raise ValueError(
-                            f"Описание не может превышать {Habit.MAX_DESCRIPTION_LENGTH} символов"
-                        )
+                        raise ValueError(f"Описание не может превышать {Habit.MAX_DESCRIPTION_LENGTH} символов")
                     habit.description = habit_update.description.strip()
                 else:
                     habit.description = None
@@ -201,7 +184,7 @@ class HabitService:
             if habit_update.is_active is not None:
                 habit.is_active = habit_update.is_active
                 if not habit.is_active and not habit.completed_at:
-                    habit.completed_at = datetime.now()
+                    habit.completed_at = datetime.now(timezone.utc)
 
             if habit_update.max_days is not None:
                 if habit_update.max_days < Habit.MIN_DAYS:
@@ -499,7 +482,7 @@ class HabitService:
                 "created_at": habit.created_at,
                 "completed_at": habit.completed_at,
                 "completed_early": habit.completed_early,
-                "completion_rate": (completed_logs / total_logs * 100) if total_logs > 0 else 0
+                "completion_rate": (completed_logs / total_logs * 100) if total_logs > 0 else 0,
             }
 
         except SQLAlchemyError as e:
@@ -507,11 +490,7 @@ class HabitService:
             raise
 
     @staticmethod
-    def get_habit_history(
-        db: Session,
-        habit_id: int,
-        days: int = 30
-    ) -> Dict[str, Any]:
+    def get_habit_history(db: Session, habit_id: int, days: int = 30) -> Dict[str, Any]:
         """
         Получение истории выполнения привычки за последние N дней.
 
@@ -534,10 +513,12 @@ class HabitService:
             # Получаем логи за последние days дней
             start_date = date.today() - timedelta(days=days)
 
-            logs = db.query(HabitLog).filter(
-                HabitLog.habit_id == habit_id,
-                HabitLog.date >= start_date
-            ).order_by(HabitLog.date.desc()).all()
+            logs = (
+                db.query(HabitLog)
+                .filter(HabitLog.habit_id == habit_id, HabitLog.date >= start_date)
+                .order_by(HabitLog.date.desc())
+                .all()
+            )
 
             # Создаем словарь для быстрого доступа
             log_dict = {log.date: log.completed for log in logs}
@@ -546,11 +527,13 @@ class HabitService:
             history = []
             for i in range(days - 1, -1, -1):
                 current_date = date.today() - timedelta(days=i)
-                history.append({
-                    "date": current_date.isoformat(),
-                    "day": current_date.strftime("%a"),  # Пн, Вт, Ср...
-                    "completed": log_dict.get(current_date, False)
-                })
+                history.append(
+                    {
+                        "date": current_date.isoformat(),
+                        "day": current_date.strftime("%a"),  # Пн, Вт, Ср...
+                        "completed": log_dict.get(current_date, False),
+                    }
+                )
 
             return {
                 "habit_id": habit.id,
@@ -558,7 +541,7 @@ class HabitService:
                 "days": days,
                 "history": history,
                 "completed_count": sum(1 for h in history if h["completed"]),
-                "completion_rate": (sum(1 for h in history if h["completed"]) / days * 100) if days > 0 else 0
+                "completion_rate": (sum(1 for h in history if h["completed"]) / days * 100) if days > 0 else 0,
             }
 
         except SQLAlchemyError as e:
@@ -566,10 +549,7 @@ class HabitService:
             raise
 
     @staticmethod
-    def check_21_days(
-        db: Session,
-        user_id: Optional[int] = None
-    ) -> Dict[str, Any]:
+    def check_21_days(db: Session, user_id: Optional[int] = None) -> Dict[str, Any]:
         """
         Проверка привычек на соответствие правилу 21 дня.
 
@@ -605,14 +585,13 @@ class HabitService:
                         habit.last_completed = None
                         updated_count += 1
                         logger.warning(
-                            f"⚠️ Сброшен прогресс привычки {habit.id} "
-                            f"(не выполнялась {days_since_last} дней)"
+                            f"⚠️ Сброшен прогресс привычки {habit.id} " f"(не выполнялась {days_since_last} дней)"
                         )
 
                 # Проверка достижения цели
                 if habit.days_completed >= habit.max_days:
                     habit.is_active = False
-                    habit.completed_at = datetime.now()
+                    habit.completed_at = datetime.now(timezone.utc)
                     completed_count += 1
                     logger.info(f"✅ Привычка {habit.id} достигла цели автоматически")
 
@@ -627,12 +606,7 @@ class HabitService:
             logger.error(f"❌ Ошибка БД при сохранении изменений: {e}")
             raise
 
-        return {
-            "updated": updated_count,
-            "completed": completed_count,
-            "errors": errors,
-            "total_checked": len(habits)
-        }
+        return {"updated": updated_count, "completed": completed_count, "errors": errors, "total_checked": len(habits)}
 
     # ============ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============
 
@@ -649,10 +623,7 @@ class HabitService:
             int: Количество активных привычек
         """
         try:
-            return db.query(Habit).filter(
-                Habit.user_id == user_id,
-                Habit.is_active == True
-            ).count()
+            return db.query(Habit).filter(Habit.user_id == user_id, Habit.is_active == True).count()
         except SQLAlchemyError as e:
             logger.error(f"❌ Ошибка БД при подсчете активных привычек: {e}")
             raise
@@ -670,10 +641,7 @@ class HabitService:
             int: Количество завершенных привычек
         """
         try:
-            return db.query(Habit).filter(
-                Habit.user_id == user_id,
-                Habit.is_active == False
-            ).count()
+            return db.query(Habit).filter(Habit.user_id == user_id, Habit.is_active == False).count()
         except SQLAlchemyError as e:
             logger.error(f"❌ Ошибка БД при подсчете завершенных привычек: {e}")
             raise
@@ -691,9 +659,7 @@ class HabitService:
             int: Общее количество выполненных дней
         """
         try:
-            result = db.query(db.func.sum(Habit.days_completed)).filter(
-                Habit.user_id == user_id
-            ).scalar()
+            result = db.query(func.sum(Habit.days_completed)).filter(Habit.user_id == user_id).scalar()
             return result or 0
         except SQLAlchemyError as e:
             logger.error(f"❌ Ошибка БД при подсчете выполненных дней: {e}")

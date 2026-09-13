@@ -2,14 +2,7 @@
 Тесты валидации данных.
 """
 
-import pytest
-
-from backend.app.utils.validators import (
-    validate_habit_name,
-    validate_username,
-    validate_chat_id,
-    validate_max_days,
-)
+from backend.app.utils.validators import validate_chat_id, validate_habit_name, validate_max_days, validate_username
 
 
 class TestValidators:

@@ -3,13 +3,15 @@
 """
 
 from typing import Any, Generic, List, Optional, TypeVar
+
 from pydantic import BaseModel, Field
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class MessageResponse(BaseModel):
     """Стандартный ответ с сообщением."""
+
     message: str
     success: bool = True
     data: Optional[Any] = None
@@ -17,14 +19,16 @@ class MessageResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Ответ с ошибкой."""
+
     detail: str
     status_code: int
     error_code: Optional[str] = None
-    extra: Optional[dict] = None
+    extra: Optional[dict[str, Any]] = None
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Ответ с пагинацией."""
+
     items: List[T]
     total: int
     page: int = Field(..., ge=1)

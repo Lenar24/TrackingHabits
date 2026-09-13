@@ -3,7 +3,7 @@
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from ..database import TokenDB
 from .api_client import APIClient
@@ -18,12 +18,7 @@ class AuthService:
         self.client = client
         self.db = db
 
-    async def login(
-        self,
-        user_id: int,
-        chat_id: int,
-        username: Optional[str] = None
-    ) -> bool:
+    async def login(self, user_id: int, chat_id: int, username: Optional[str] = None) -> bool:
         """Логин пользователя и получение JWT-токена."""
         try:
             response = await self.client.post(
@@ -32,7 +27,7 @@ class AuthService:
                     "user_id": user_id,
                     "chat_id": chat_id,
                     "username": username,
-                }
+                },
             )
 
             if response.status_code == 200:
@@ -49,22 +44,21 @@ class AuthService:
 
                 logger.info(f"✅ Токен получен для пользователя {user_id}")
                 return True
-            else:
-                logger.error(f"❌ Ошибка логина: {response.status_code} - {response.text}")
-                return False
+
+            logger.error(f"❌ Ошибка логина: {response.status_code} - {response.text}")
+            return False
 
         except Exception as e:
             logger.error(f"❌ Ошибка логина: {e}")
             return False
 
-    async def refresh_token(
-        self,
-        user_id: int,
-        chat_id: Optional[int] = None
-    ) -> bool:
+    async def refresh_token(self, user_id: int, chat_id: Optional[int] = None) -> bool:
         """Обновление токена."""
         self.client.clear_token()
         self.db.delete_token(user_id)
+        if chat_id is None:
+            logger.warning(f"⚠️ refresh_token без chat_id для пользователя {user_id}")
+            return False
         return await self.login(user_id, chat_id)
 
     def get_token(self, user_id: int) -> Optional[str]:
@@ -81,7 +75,7 @@ class AuthService:
         """Проверка валидности токена."""
         return self.db.get_token(user_id) is not None
 
-    def get_token_info(self, user_id: int) -> Optional[dict]:
+    def get_token_info(self, user_id: int) -> Optional[dict[str, Any]]:
         """Информация о токене."""
         return self.db.get_token_info(user_id)
 

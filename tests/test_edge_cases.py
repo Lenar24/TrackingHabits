@@ -2,7 +2,6 @@
 Тесты граничных случаев.
 """
 
-import pytest
 from datetime import date, timedelta
 
 from backend.app.models import Habit
@@ -26,10 +25,7 @@ class TestEdgeCases:
         db_session.commit()
 
         # Выполняем 21-й день
-        response = client.post(
-            f"/api/v1/habits/{habit.id}/complete",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{habit.id}/complete", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["completed"] is True
@@ -51,10 +47,7 @@ class TestEdgeCases:
         db_session.add(habit)
         db_session.commit()
 
-        response = client.post(
-            f"/api/v1/habits/{habit.id}/complete",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{habit.id}/complete", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         # Прогресс сбрасывается +1
@@ -77,9 +70,6 @@ class TestEdgeCases:
             db_session.add(habit)
         db_session.commit()
 
-        response = client.get(
-            "/api/v1/habits/?limit=100",
-            headers=auth_headers
-        )
+        response = client.get("/api/v1/habits/?limit=100", headers=auth_headers)
         assert response.status_code == 200
         assert len(response.json()) == 100

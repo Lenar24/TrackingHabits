@@ -6,10 +6,10 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from ..database import TokenDB
 from ..keyboards import create_main_keyboard
 from ..services import HabitService
 from ..services.auth_service import AuthService
-from ..database import TokenDB
 from ..utils import format_habit_list, format_statistics
 from .callback_handlers import handle_complete_early, handle_mark_complete
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CommandContext:
     """Контекст команды."""
+
     command: str
     chat_id: int
     user_id: int
@@ -49,10 +50,7 @@ async def handle_command(ctx: CommandContext) -> None:
     elif ctx.command == "add":
         await ctx.bot.send_message(
             chat_id=ctx.chat_id,
-            text=(
-                "✏️ **Введите название новой привычки:**\n\n"
-                "Например: «Читать 30 минут» или «Заниматься спортом»"
-            ),
+            text=("✏️ **Введите название новой привычки:**\n\n" "Например: «Читать 30 минут» или «Заниматься спортом»"),
             attachments=create_main_keyboard(),
         )
 

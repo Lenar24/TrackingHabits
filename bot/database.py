@@ -8,11 +8,11 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# ✅ Абсолютный путь к БД (в директории bot/)
+# Абсолютный путь к БД (в директории bot/)
 BASE_DIR = Path(__file__).parent
 DEFAULT_DB_PATH = BASE_DIR / "bot_tokens.db"
 
@@ -50,18 +50,22 @@ class TokenDB:
     def _init_db(self) -> None:
         """Создание таблиц и индексов."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS sessions (
                     user_id INTEGER PRIMARY KEY,
                     access_token TEXT NOT NULL,
                     expires_at TIMESTAMP NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_expires_at 
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_expires_at
                 ON sessions(expires_at)
-            """)
+            """
+            )
             conn.commit()
 
     def save_token(self, user_id: int, access_token: str, expires_in: int) -> None:
@@ -70,16 +74,14 @@ class TokenDB:
 
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    INSERT OR REPLACE INTO sessions 
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO sessions
                     (user_id, access_token, expires_at, created_at)
                     VALUES (?, ?, ?, ?)
-                """, (
-                    user_id,
-                    access_token,
-                    expires_at.isoformat(),
-                    datetime.now(timezone.utc).isoformat()
-                ))
+                """,
+                    (user_id, access_token, expires_at.isoformat(), datetime.now(timezone.utc).isoformat()),
+                )
                 conn.commit()
                 logger.debug(f"✅ Токен сохранён для user_id={user_id}")
         except sqlite3.Error as e:
@@ -92,12 +94,16 @@ class TokenDB:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
                     "SELECT access_token, expires_at FROM sessions WHERE user_id = ?",
-                    (user_id,)
+                    (user_id,),
                 )
                 row = cursor.fetchone()
 
                 if row:
                     token, expires_at = row
+                    if not isinstance(token, str) or not isinstance(expires_at, str):
+                        logger.error(f"❌ Некорректные данные токена для {user_id}")
+                        self.delete_token(user_id)
+                        return None
                     try:
                         expires_at_dt = datetime.fromisoformat(expires_at)
                         if expires_at_dt.tzinfo is None:
@@ -105,10 +111,10 @@ class TokenDB:
 
                         if datetime.now(timezone.utc) < expires_at_dt:
                             return token
-                        else:
-                            logger.info(f"⏰ Токен истёк для {user_id}, удаляем")
-                            self.delete_token(user_id)
-                            return None
+
+                        logger.info(f"⏰ Токен истёк для {user_id}, удаляем")
+                        self.delete_token(user_id)
+                        return None
                     except (ValueError, TypeError) as e:
                         logger.error(f"❌ Ошибка парсинга даты для {user_id}: {e}")
                         self.delete_token(user_id)
@@ -134,8 +140,7 @@ class TokenDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
-                    "DELETE FROM sessions WHERE expires_at < ?",
-                    (datetime.now(timezone.utc).isoformat(),)
+                    "DELETE FROM sessions WHERE expires_at < ?", (datetime.now(timezone.utc).isoformat(),)
                 )
                 count = cursor.rowcount
                 conn.commit()
@@ -146,15 +151,13 @@ class TokenDB:
             logger.error(f"❌ Ошибка очистки токенов: {e}")
             return 0
 
-    def get_token_info(self, user_id: int) -> Optional[Dict]:
+    def get_token_info(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Получение информации о токене пользователя."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
-                    "SELECT access_token, expires_at, created_at "
-                    "FROM sessions WHERE user_id = ?",
-                    (user_id,)
+                    "SELECT access_token, expires_at, created_at FROM sessions WHERE user_id = ?", (user_id,)
                 )
                 row = cursor.fetchone()
                 if row:
@@ -169,7 +172,8 @@ class TokenDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute("SELECT COUNT(*) FROM sessions")
-                return cursor.fetchone()[0]
+                row = cursor.fetchone()
+                return int(row[0]) if row else 0
         except sqlite3.Error as e:
             logger.error(f"❌ Ошибка подсчёта токенов: {e}")
             return 0

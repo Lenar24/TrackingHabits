@@ -41,6 +41,7 @@ services:
       API_URL: http://backend:8000
       TZ: Europe/Moscow
       PYTHONPATH: /app
+      SCHEDULER_ENABLED: "false"
     volumes:
       - ./logs:/app/logs
     healthcheck:
@@ -52,6 +53,29 @@ services:
     command: >
       sh -c "alembic upgrade head &&
              uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 4"
+    networks:
+      - habit_network
+
+  # scheduler
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    container_name: habit-scheduler
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - SCHEDULER_ENABLED=true
+      - DATABASE_URL=postgresql://postgresql:postgresql@db:5432/habit_tracker
+      - API_URL=http://backend:8000
+      - TZ=Europe/Moscow
+      - PYTHONPATH=/app
     networks:
       - habit_network
 

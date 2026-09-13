@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 def format_date(date_str: Optional[str]) -> Optional[str]:
@@ -12,19 +12,13 @@ def format_date(date_str: Optional[str]) -> Optional[str]:
     if not date_str:
         return None
     try:
-        if isinstance(date_str, str):
-            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        else:
-            dt = date_str
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return dt.strftime("%d-%m-%Y")
     except (ValueError, TypeError):
         return str(date_str)
 
 
-def format_habit_list(
-    habits: List[Dict[str, Any]],
-    username: Optional[str] = None
-) -> str:
+def format_habit_list(habits: List[Dict[str, Any]], username: Optional[str] = None) -> str:
     """Форматирование списка привычек для отображения в боте."""
     if not habits:
         return "📋 У вас пока нет привычек."

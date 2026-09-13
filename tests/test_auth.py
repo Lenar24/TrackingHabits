@@ -2,7 +2,6 @@
 Тесты для аутентификации.
 """
 
-import pytest
 from datetime import timedelta
 
 from backend.app.utils.auth import create_access_token
@@ -19,7 +18,7 @@ class TestLogin:
                 "max_user_id": 11111,
                 "chat_id": 22222,
                 "username": "new_user",
-            }
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -35,7 +34,7 @@ class TestLogin:
             json={
                 "max_user_id": test_user.max_user_id,
                 "chat_id": test_user.chat_id,
-            }
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -49,7 +48,7 @@ class TestLogin:
             json={
                 "max_user_id": test_user.max_user_id,
                 "chat_id": new_chat_id,
-            }
+            },
         )
         assert response.status_code == 200
 
@@ -58,10 +57,7 @@ class TestLogin:
 
     def test_login_missing_fields(self, client):
         """Логин без обязательных полей."""
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"username": "test"}
-        )
+        response = client.post("/api/v1/auth/login", json={"username": "test"})
         assert response.status_code == 422
 
 
@@ -84,22 +80,13 @@ class TestCurrentUser:
 
     def test_get_me_invalid_token(self, client):
         """Получение информации с невалидным токеном."""
-        response = client.get(
-            "/api/v1/auth/me",
-            headers={"Authorization": "Bearer invalid_token"}
-        )
+        response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code == 401
 
     def test_get_me_expired_token(self, client, test_user):
         """Получение информации с истёкшим токеном."""
-        expired_token = create_access_token(
-            {"sub": str(test_user.id)},
-            expires_delta=timedelta(seconds=-1)
-        )
-        response = client.get(
-            "/api/v1/auth/me",
-            headers={"Authorization": f"Bearer {expired_token}"}
-        )
+        expired_token = create_access_token({"sub": str(test_user.id)}, expires_delta=timedelta(seconds=-1))
+        response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
         assert response.status_code == 401
 
 
@@ -114,25 +101,19 @@ class TestRefreshToken:
             json={
                 "max_user_id": test_user.max_user_id,
                 "chat_id": test_user.chat_id,
-            }
+            },
         )
         refresh_token = login_response.json()["refresh_token"]
 
         # Обновление
-        response = client.post(
-            "/api/v1/auth/refresh",
-            json={"refresh_token": refresh_token}
-        )
+        response = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
 
     def test_refresh_invalid_token(self, client):
         """Обновление с невалидным токеном."""
-        response = client.post(
-            "/api/v1/auth/refresh",
-            json={"refresh_token": "invalid_token"}
-        )
+        response = client.post("/api/v1/auth/refresh", json={"refresh_token": "invalid_token"})
         assert response.status_code == 401
 
 

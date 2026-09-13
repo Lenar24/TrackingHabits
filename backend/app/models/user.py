@@ -2,9 +2,10 @@
 Модель User представляет пользователя системы.
 """
 
-from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Integer, String, Boolean
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import TYPE_CHECKING, List, Optional
+
+from sqlalchemy import Boolean, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
 
@@ -36,10 +37,7 @@ class User(BaseModel):
 
     # Связи
     habits: Mapped[List["Habit"]] = relationship(
-        "Habit",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        lazy="dynamic"
+        "Habit", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def __repr__(self) -> str:

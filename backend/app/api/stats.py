@@ -2,25 +2,21 @@
 Модуль предоставляет эндпоинты для получения статистики.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from ..models import HabitLog, Habit
+from ..models import Habit, HabitLog, User
 from ..schemas import HabitStats, OverallStats
 from ..services import HabitService
-from ..utils.database import get_db
 from ..utils.auth import get_current_user
-from ..models import User
+from ..utils.database import get_db
 from .dependencies import get_habit_or_404
 
 router = APIRouter()
 
 
 @router.get("/overall", response_model=OverallStats)
-def get_overall_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_overall_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Получение общей статистики по всем привычкам пользователя.
     """
@@ -50,7 +46,7 @@ def get_overall_stats(
         completed_habits=completed_habits,
         total_days_completed=total_days_completed,
         best_overall_streak=best_streak,
-        completion_rate=round(completion_rate, 2)
+        completion_rate=round(completion_rate, 2),
     )
 
 
@@ -97,11 +93,5 @@ def get_habit_history(
     return {
         "habit_id": habit.id,
         "name": habit.name,
-        "logs": [
-            {
-                "date": log.date,
-                "completed": log.completed
-            }
-            for log in logs
-        ]
+        "logs": [{"date": log.date, "completed": log.completed} for log in logs],
     }

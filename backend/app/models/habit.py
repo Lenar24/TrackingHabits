@@ -2,16 +2,17 @@
 Модель Habit представляет привычку пользователя.
 """
 
-from typing import Optional, List, TYPE_CHECKING
-from datetime import date, datetime, timezone, timedelta
-from sqlalchemy import Integer, String, Boolean, Date, DateTime, Text, ForeignKey, Index
-from sqlalchemy.orm import relationship, Mapped, mapped_column, validates
+from datetime import date, datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Any, List, Optional
+
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from .base import BaseModel
 
 if TYPE_CHECKING:
-    from .user import User
     from .habit_log import HabitLog
+    from .user import User
 
 
 class Habit(BaseModel):
@@ -43,80 +44,39 @@ class Habit(BaseModel):
 
     # Внешние ключи
     user_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # Основная информация
-    name: Mapped[str] = mapped_column(
-        String(MAX_NAME_LENGTH),
-        nullable=False,
-        index=True
-    )
-    description: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True
-    )
+    name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Статус
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        index=True
-    )
-    completed_early: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    completed_early: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Прогресс
-    days_completed: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False
-    )
-    max_days: Mapped[int] = mapped_column(
-        Integer,
-        default=MAX_DAYS_DEFAULT,
-        nullable=False
-    )
+    days_completed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_days: Mapped[int] = mapped_column(Integer, default=MAX_DAYS_DEFAULT, nullable=False)
 
     # Даты
-    last_completed: Mapped[Optional[date]] = mapped_column(
-        Date,
-        nullable=True
-    )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime,
-        nullable=True
-    )
+    last_completed: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     #  СВЯЗИ
 
-    user: Mapped["User"] = relationship(
-        "User",
-        back_populates="habits"
-    )
+    user: Mapped["User"] = relationship("User", back_populates="habits")
     logs: Mapped[List["HabitLog"]] = relationship(
-        "HabitLog",
-        back_populates="habit",
-        cascade="all, delete-orphan",
-        lazy="dynamic"
+        "HabitLog", back_populates="habit", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     #  ИНДЕКСЫ
 
-    __table_args__ = (
-        Index('ix_habits_user_active', 'user_id', 'is_active'),
-    )
+    __table_args__ = (Index("ix_habits_user_active", "user_id", "is_active"),)
 
     #  ВАЛИДАЦИЯ
 
-    @validates('name')
+    @validates("name")
     def validate_name(self, key: str, value: str) -> str:
         """
         Валидация названия привычки.
@@ -135,13 +95,11 @@ class Habit(BaseModel):
             raise ValueError("Название привычки не может быть пустым")
 
         if len(value) > self.MAX_NAME_LENGTH:
-            raise ValueError(
-                f"Название привычки не может превышать {self.MAX_NAME_LENGTH} символов"
-            )
+            raise ValueError(f"Название привычки не может превышать {self.MAX_NAME_LENGTH} символов")
 
         return value.strip()
 
-    @validates('description')
+    @validates("description")
     def validate_description(self, key: str, value: Optional[str]) -> Optional[str]:
         """
         Валидация описания привычки.
@@ -158,13 +116,11 @@ class Habit(BaseModel):
         """
         if value is not None:
             if len(value) > self.MAX_DESCRIPTION_LENGTH:
-                raise ValueError(
-                    f"Описание не может превышать {self.MAX_DESCRIPTION_LENGTH} символов"
-                )
+                raise ValueError(f"Описание не может превышать {self.MAX_DESCRIPTION_LENGTH} символов")
             return value.strip()
         return value
 
-    @validates('max_days')
+    @validates("max_days")
     def validate_max_days(self, key: str, value: int) -> int:
         """
         Валидация количества дней.
@@ -180,14 +136,10 @@ class Habit(BaseModel):
             ValueError: Если количество дней вне допустимого диапазона
         """
         if value < self.MIN_DAYS:
-            raise ValueError(
-                f"max_days должен быть не менее {self.MIN_DAYS}"
-            )
+            raise ValueError(f"max_days должен быть не менее {self.MIN_DAYS}")
 
         if value > self.MAX_DAYS_LIMIT:
-            raise ValueError(
-                f"max_days не может превышать {self.MAX_DAYS_LIMIT}"
-            )
+            raise ValueError(f"max_days не может превышать {self.MAX_DAYS_LIMIT}")
 
         return value
 
@@ -233,10 +185,7 @@ class Habit(BaseModel):
         Returns:
             bool: True если можно завершить досрочно
         """
-        return (
-            self.is_active and
-            self.days_completed >= self.MIN_DAYS_FOR_EARLY_COMPLETE
-        )
+        return self.is_active and self.days_completed >= self.MIN_DAYS_FOR_EARLY_COMPLETE
 
     @property
     def is_today_completed(self) -> bool:
@@ -282,7 +231,7 @@ class Habit(BaseModel):
 
     #  МЕТОДЫ БИЗНЕС-ЛОГИКИ
 
-    def complete_today(self) -> dict:
+    def complete_today(self) -> dict[str, Any]:
         """
         Отметить выполнение привычки за сегодня.
 
@@ -296,11 +245,7 @@ class Habit(BaseModel):
                 - already_completed: bool (была ли уже выполнена)
         """
         if not self.is_active:
-            return {
-                "success": False,
-                "message": "Привычка уже завершена",
-                "habit": self
-            }
+            return {"success": False, "message": "Привычка уже завершена", "habit": self}
 
         today = date.today()
 
@@ -309,7 +254,7 @@ class Habit(BaseModel):
                 "success": False,
                 "message": "Привычка уже выполнена сегодня",
                 "habit": self,
-                "already_completed": True
+                "already_completed": True,
             }
 
         # Проверка пропуска дней
@@ -336,28 +281,19 @@ class Habit(BaseModel):
             "habit": self,
             "completed": completed,
             "progress": f"{self.days_completed}/{self.max_days}",
-            "already_completed": False
+            "already_completed": False,
         }
 
-    def skip_today(self) -> dict:
+    def skip_today(self) -> dict[str, Any]:
         """Пропустить выполнение привычки за сегодня."""
-        from datetime import date
 
         if not self.is_active:
-            return {
-                "success": False,
-                "message": "Привычка уже завершена",
-                "habit": self
-            }
+            return {"success": False, "message": "Привычка уже завершена", "habit": self}
 
         today = date.today()
 
         if self.last_completed == today:
-            return {
-                "success": False,
-                "message": "Нельзя пропустить уже выполненную привычку",
-                "habit": self
-            }
+            return {"success": False, "message": "Нельзя пропустить уже выполненную привычку", "habit": self}
 
         # ✅ СБРОС ПРОГРЕССА ВСЕГДА при пропуске
         self.days_completed = 0
@@ -367,10 +303,10 @@ class Habit(BaseModel):
             "success": True,
             "message": "Привычка пропущена",
             "habit": self,
-            "progress": f"{self.days_completed}/{self.max_days}"
+            "progress": f"{self.days_completed}/{self.max_days}",
         }
 
-    def complete_early(self) -> dict:
+    def complete_early(self) -> dict[str, Any]:
         """
         Досрочное завершение привычки.
 
@@ -383,11 +319,7 @@ class Habit(BaseModel):
                 - current_days: int (текущее количество дней)
         """
         if not self.is_active:
-            return {
-                "success": False,
-                "message": "Привычка уже завершена",
-                "habit": self
-            }
+            return {"success": False, "message": "Привычка уже завершена", "habit": self}
 
         if self.days_completed < self.MIN_DAYS_FOR_EARLY_COMPLETE:
             return {
@@ -399,7 +331,7 @@ class Habit(BaseModel):
                 ),
                 "habit": self,
                 "required_days": self.MIN_DAYS_FOR_EARLY_COMPLETE,
-                "current_days": self.days_completed
+                "current_days": self.days_completed,
             }
 
         self.is_active = False
@@ -410,10 +342,10 @@ class Habit(BaseModel):
             "success": True,
             "message": "Привычка досрочно завершена",
             "habit": self,
-            "days_completed": self.days_completed
+            "days_completed": self.days_completed,
         }
 
-    def reset(self) -> dict:
+    def reset(self) -> dict[str, Any]:
         """
         Сброс прогресса привычки.
 
@@ -424,23 +356,15 @@ class Habit(BaseModel):
                 - habit: Habit
         """
         if not self.is_active:
-            return {
-                "success": False,
-                "message": "Нельзя сбросить завершенную привычку",
-                "habit": self
-            }
+            return {"success": False, "message": "Нельзя сбросить завершенную привычку", "habit": self}
 
         self.days_completed = 0
         self.last_completed = None
         self.completed_early = False
 
-        return {
-            "success": True,
-            "message": "Прогресс сброшен",
-            "habit": self
-        }
+        return {"success": True, "message": "Прогресс сброшен", "habit": self}
 
-    def activate(self) -> dict:
+    def activate(self) -> dict[str, Any]:
         """
         Активация привычки (если она была завершена).
 
@@ -451,21 +375,13 @@ class Habit(BaseModel):
                 - habit: Habit
         """
         if self.is_active:
-            return {
-                "success": False,
-                "message": "Привычка уже активна",
-                "habit": self
-            }
+            return {"success": False, "message": "Привычка уже активна", "habit": self}
 
         self.is_active = True
         self.completed_at = None
         self.completed_early = False
 
-        return {
-            "success": True,
-            "message": "Привычка активирована",
-            "habit": self
-        }
+        return {"success": True, "message": "Привычка активирована", "habit": self}
 
     def get_streak(self) -> int:
         """
@@ -484,9 +400,7 @@ class Habit(BaseModel):
         # Считаем стрик из логов
         from .habit_log import HabitLog
 
-        logs = self.logs.filter(
-            HabitLog.completed == True
-        ).order_by(HabitLog.date.desc()).limit(365).all()
+        logs = self.logs.filter(HabitLog.completed == True).order_by(HabitLog.date.desc()).limit(365).all()
 
         streak = 0
         for log in logs:

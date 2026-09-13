@@ -3,16 +3,14 @@
 """
 
 import logging
-from typing import Any, List, Dict
+from typing import Any, List
+
+from maxapi.types.attachments import AttachmentButton
 
 logger = logging.getLogger(__name__)
 
 
-async def send_welcome_message(
-    chat_id: int,
-    bot: Any,
-    keyboard: List[Dict[str, Any]]
-) -> None:
+async def send_welcome_message(chat_id: int, bot: Any, keyboard: List[AttachmentButton]) -> None:
     """Отправляет приветственное сообщение с клавиатурой."""
     try:
         await bot.send_message(

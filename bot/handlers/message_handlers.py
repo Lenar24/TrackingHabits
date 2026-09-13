@@ -7,10 +7,10 @@ from typing import Any, Dict
 
 import httpx
 
+from ..database import TokenDB
 from ..keyboards import create_main_keyboard
 from ..services import HabitService
 from ..services.auth_service import AuthService
-from ..database import TokenDB
 from ..utils.messages import send_welcome_message
 
 logger = logging.getLogger(__name__)

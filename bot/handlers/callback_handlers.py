@@ -6,20 +6,21 @@
 """
 
 import logging
+from typing import Any
 
 import httpx
 
+from ..database import TokenDB
 from ..keyboards import create_habit_keyboard, create_main_keyboard
 from ..services import HabitService
 from ..services.auth_service import AuthService
-from ..database import TokenDB
 from ..utils import format_habit_list, format_statistics
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_message_callback(
-    update_data: dict,
+    update_data: dict[str, Any],
     bot,
     client,
     auth_service: AuthService,
@@ -153,10 +154,7 @@ async def handle_complete_early(chat_id, user_id, bot, service) -> None:
         )
         return
 
-    text = (
-        "🏁 **Завершить привычку досрочно**\n\n"
-        "Выберите привычку:\n\n"
-    )
+    text = "🏁 **Завершить привычку досрочно**\n\nВыберите привычку:\n\n"
     for habit in active_habits:
         name = habit.get("name", "Без названия")
         days = habit.get("days_completed", 0)
@@ -173,11 +171,7 @@ async def handle_complete_early(chat_id, user_id, bot, service) -> None:
 
         await bot.send_message(
             chat_id=chat_id,
-            text=(
-                f"📌 **{name}**\n"
-                f"📊 Прогресс: {days}/{max_days} дней\n\n"
-                f"🏁 Завершить привычку досрочно?"
-            ),
+            text=(f"📌 **{name}**\n" f"📊 Прогресс: {days}/{max_days} дней\n\n" f"🏁 Завершить привычку досрочно?"),
             attachments=create_habit_keyboard(habit_id),
         )
 

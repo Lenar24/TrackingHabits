@@ -2,7 +2,6 @@
 Тесты для привычек.
 """
 
-import pytest
 from datetime import date
 
 from backend.app.models import Habit
@@ -20,7 +19,7 @@ class TestCreateHabit:
                 "name": "Новая привычка",
                 "description": "Описание",
                 "max_days": 21,
-            }
+            },
         )
         assert response.status_code == 201
         data = response.json()
@@ -31,29 +30,18 @@ class TestCreateHabit:
 
     def test_create_habit_duplicate(self, client, auth_headers, test_habit):
         """Создание дубликата привычки."""
-        response = client.post(
-            "/api/v1/habits/",
-            headers=auth_headers,
-            json={"name": test_habit.name}
-        )
+        response = client.post("/api/v1/habits/", headers=auth_headers, json={"name": test_habit.name})
         assert response.status_code == 400
         assert "уже существует" in response.json()["detail"]
 
     def test_create_habit_empty_name(self, client, auth_headers):
         """Создание с пустым именем."""
-        response = client.post(
-            "/api/v1/habits/",
-            headers=auth_headers,
-            json={"name": ""}
-        )
+        response = client.post("/api/v1/habits/", headers=auth_headers, json={"name": ""})
         assert response.status_code == 422
 
     def test_create_habit_unauthorized(self, client):
         """Создание без авторизации."""
-        response = client.post(
-            "/api/v1/habits/",
-            json={"name": "Тест"}
-        )
+        response = client.post("/api/v1/habits/", json={"name": "Тест"})
         assert response.status_code == 403
 
 
@@ -69,18 +57,12 @@ class TestGetHabits:
 
     def test_get_habits_active_only(self, client, auth_headers, test_habit):
         """Получение только активных."""
-        response = client.get(
-            "/api/v1/habits/?active_only=true",
-            headers=auth_headers
-        )
+        response = client.get("/api/v1/habits/?active_only=true", headers=auth_headers)
         assert response.status_code == 200
 
     def test_get_habit_by_id(self, client, auth_headers, test_habit):
         """Получение привычки по ID."""
-        response = client.get(
-            f"/api/v1/habits/{test_habit.id}",
-            headers=auth_headers
-        )
+        response = client.get(f"/api/v1/habits/{test_habit.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == test_habit.id
@@ -100,10 +82,7 @@ class TestGetHabits:
         db_session.add(other_habit)
         db_session.commit()
 
-        response = client.get(
-            f"/api/v1/habits/{other_habit.id}",
-            headers=auth_headers
-        )
+        response = client.get(f"/api/v1/habits/{other_habit.id}", headers=auth_headers)
         assert response.status_code == 403
 
 
@@ -115,7 +94,7 @@ class TestUpdateHabit:
         response = client.put(
             f"/api/v1/habits/{test_habit.id}",
             headers=auth_headers,
-            json={"name": "Обновлённое имя", "description": "Новое описание"}
+            json={"name": "Обновлённое имя", "description": "Новое описание"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -125,9 +104,7 @@ class TestUpdateHabit:
     def test_update_habit_partial(self, client, auth_headers, test_habit):
         """Частичное обновление."""
         response = client.put(
-            f"/api/v1/habits/{test_habit.id}",
-            headers=auth_headers,
-            json={"description": "Только описание"}
+            f"/api/v1/habits/{test_habit.id}", headers=auth_headers, json={"description": "Только описание"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -140,10 +117,7 @@ class TestDeleteHabit:
 
     def test_delete_habit(self, client, auth_headers, test_habit):
         """Удаление привычки."""
-        response = client.delete(
-            f"/api/v1/habits/{test_habit.id}",
-            headers=auth_headers
-        )
+        response = client.delete(f"/api/v1/habits/{test_habit.id}", headers=auth_headers)
         assert response.status_code == 200
         assert "deleted" in response.json()["message"].lower()
 
@@ -158,10 +132,7 @@ class TestCompleteHabit:
 
     def test_complete_habit(self, client, auth_headers, test_habit):
         """Выполнение привычки."""
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/complete",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -171,16 +142,10 @@ class TestCompleteHabit:
     def test_complete_habit_twice(self, client, auth_headers, test_habit):
         """Повторное выполнение в тот же день."""
         # Первое выполнение
-        client.post(
-            f"/api/v1/habits/{test_habit.id}/complete",
-            headers=auth_headers
-        )
+        client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
 
         # Второе выполнение
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/complete",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -189,10 +154,7 @@ class TestCompleteHabit:
 
     def test_complete_habit_progress_1_21(self, client, auth_headers, test_habit):
         """Проверка прогресса после выполнения."""
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/complete",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
         data = response.json()
         assert data["progress"] == "1/21"
 
@@ -202,10 +164,7 @@ class TestSkipHabit:
 
     def test_skip_habit(self, client, auth_headers, test_habit):
         """Пропуск привычки."""
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/skip",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/skip", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -215,16 +174,10 @@ class TestSkipHabit:
     def test_skip_habit_after_complete(self, client, auth_headers, test_habit):
         """Пропуск после выполнения."""
         # Сначала выполняем
-        client.post(
-            f"/api/v1/habits/{test_habit.id}/complete",
-            headers=auth_headers
-        )
+        client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
 
         # Пытаемся пропустить
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/skip",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/skip", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -236,10 +189,7 @@ class TestCompleteEarly:
 
     def test_complete_early_not_enough_days(self, client, auth_headers, test_habit):
         """Досрочное завершение с < 7 днями."""
-        response = client.post(
-            f"/api/v1/habits/{test_habit.id}/complete-early",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit.id}/complete-early", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -247,10 +197,7 @@ class TestCompleteEarly:
 
     def test_complete_early_success(self, client, auth_headers, test_habit_7_days):
         """Досрочное завершение с 7 днями."""
-        response = client.post(
-            f"/api/v1/habits/{test_habit_7_days.id}/complete-early",
-            headers=auth_headers
-        )
+        response = client.post(f"/api/v1/habits/{test_habit_7_days.id}/complete-early", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -263,10 +210,7 @@ class TestProgressAndStreak:
 
     def test_get_progress(self, client, auth_headers, test_habit):
         """Получение прогресса."""
-        response = client.get(
-            f"/api/v1/habits/{test_habit.id}/progress",
-            headers=auth_headers
-        )
+        response = client.get(f"/api/v1/habits/{test_habit.id}/progress", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "progress_percentage" in data
@@ -275,10 +219,7 @@ class TestProgressAndStreak:
 
     def test_get_streak(self, client, auth_headers, test_habit):
         """Получение стрика."""
-        response = client.get(
-            f"/api/v1/habits/{test_habit.id}/streak",
-            headers=auth_headers
-        )
+        response = client.get(f"/api/v1/habits/{test_habit.id}/streak", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "streak" in data

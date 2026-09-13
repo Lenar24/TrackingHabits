@@ -2,14 +2,15 @@
 Класс UserService реализует бизнес-логику работы с пользователями.
 """
 
-from typing import Optional, List, Dict, Any
 import logging
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
+from typing import Any, Dict, List, Optional
 
-from ..models import User, Habit
-from ..schemas import UserCreate, UserUpdate
+from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, joinedload
+
+from ..models import Habit, User
+from ..schemas import UserUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +94,7 @@ class UserService:
             raise
 
     @staticmethod
-    def get_users_with_habits(
-            db: Session,
-            skip: int = 0,
-            limit: int = 100
-    ) -> List[User]:
+    def get_users_with_habits(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
         """
         Получение пользователей с загрузкой привычек.
 
@@ -110,9 +107,7 @@ class UserService:
             List[User]: Список пользователей с привычками
         """
         try:
-            return db.query(User).options(
-                joinedload(User.habits)
-            ).offset(skip).limit(limit).all()
+            return db.query(User).options(joinedload(User.habits)).offset(skip).limit(limit).all()
         except SQLAlchemyError as e:
             logger.error(f"Ошибка БД при получении пользователей с привычками: {e}")
             raise
@@ -131,9 +126,7 @@ class UserService:
             List[User]: Список активных пользователей
         """
         try:
-            return db.query(User).filter(
-                User.is_active == True
-            ).offset(skip).limit(limit).all()
+            return db.query(User).filter(User.is_active == True).offset(skip).limit(limit).all()
         except SQLAlchemyError as e:
             logger.error(f"Ошибка БД при получении активных пользователей: {e}")
             raise
@@ -141,12 +134,7 @@ class UserService:
     # ============ СОЗДАНИЕ ПОЛЬЗОВАТЕЛЕЙ ============
 
     @staticmethod
-    def create_user(
-            db: Session,
-            max_user_id: int,
-            chat_id: int,
-            username: Optional[str] = None
-    ) -> User:
+    def create_user(db: Session, max_user_id: int, chat_id: int, username: Optional[str] = None) -> User:
         """
         Создание нового пользователя.
 
@@ -171,11 +159,7 @@ class UserService:
         if not chat_id:
             raise ValueError("chat_id обязателен")
 
-        db_user = User(
-            max_user_id=max_user_id,
-            chat_id=chat_id,
-            username=username.strip() if username else None
-        )
+        db_user = User(max_user_id=max_user_id, chat_id=chat_id, username=username.strip() if username else None)
 
         try:
             db.add(db_user)
@@ -303,12 +287,7 @@ class UserService:
     # ============ GET OR CREATE ============
 
     @staticmethod
-    def get_or_create_user(
-            db: Session,
-            max_user_id: int,
-            chat_id: int,
-            username: Optional[str] = None
-    ) -> User:
+    def get_or_create_user(db: Session, max_user_id: int, chat_id: int, username: Optional[str] = None) -> User:
         """
         Получение или создание пользователя.
 
@@ -359,9 +338,7 @@ class UserService:
             completed_habits = total_habits - active_habits
 
             # Общее количество выполненных дней
-            total_days = db.query(db.func.sum(Habit.days_completed)).filter(
-                Habit.user_id == user_id
-            ).scalar() or 0
+            total_days = db.query(func.sum(Habit.days_completed)).filter(Habit.user_id == user_id).scalar() or 0
 
             return {
                 "user_id": user.id,

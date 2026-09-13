@@ -2,26 +2,25 @@
 Общие фикстуры для всех тестов.
 """
 
-import pytest
 from datetime import date, datetime, timezone
 from typing import Generator
 
+import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.app.main import app
-from backend.app.models import Base, User, Habit, HabitLog
-from backend.app.utils.database import get_db
+from backend.app.models import Base, Habit, HabitLog, User
 from backend.app.utils.auth import create_access_token
-from backend.app.core.config import settings
-
+from backend.app.utils.database import get_db
 
 # ============ DATABASE FIXTURES ============
 
+
 @pytest.fixture(scope="function")
-def db_engine():
+def db_engine() -> Generator[Engine, None, None]:
     """Создаёт тестовый движок SQLite в памяти."""
     engine = create_engine(
         "sqlite:///:memory:",
@@ -44,7 +43,7 @@ def db_engine():
 @pytest.fixture(scope="function")
 def db_session(db_engine) -> Generator[Session, None, None]:
     """Создаёт тестовую сессию БД."""
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)  # pylint: disable=invalid-name
     session = SessionLocal()
     try:
         yield session
@@ -54,13 +53,11 @@ def db_session(db_engine) -> Generator[Session, None, None]:
 
 
 @pytest.fixture(scope="function")
-def client(db_session) -> TestClient:
+def client(db_session) -> Generator[TestClient, None, None]:
     """Создаёт тестовый клиент FastAPI."""
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+
+    def override_get_db() -> Generator[Session, None, None]:
+        yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
@@ -68,6 +65,7 @@ def client(db_session) -> TestClient:
 
 
 # ============ USER FIXTURES ============
+
 
 @pytest.fixture
 def test_user(db_session) -> User:
@@ -118,6 +116,7 @@ def test_user2(db_session) -> User:
 
 
 # ============ HABIT FIXTURES ============
+
 
 @pytest.fixture
 def test_habit(db_session, test_user) -> Habit:
@@ -188,41 +187,47 @@ def test_habit_log(db_session, test_habit) -> HabitLog:
 
 # ============ AUTH FIXTURES ============
 
+
 @pytest.fixture
 def test_token(test_user) -> str:
     """Создаёт JWT токен для тестового пользователя."""
-    return create_access_token({
-        "sub": str(test_user.id),
-        "user_id": test_user.id,
-        "max_user_id": test_user.max_user_id,
-        "chat_id": test_user.chat_id,
-    })
+    return create_access_token(
+        {
+            "sub": str(test_user.id),
+            "user_id": test_user.id,
+            "max_user_id": test_user.max_user_id,
+            "chat_id": test_user.chat_id,
+        }
+    )
 
 
 @pytest.fixture
 def admin_token(test_admin) -> str:
     """Создаёт JWT токен для администратора."""
-    return create_access_token({
-        "sub": str(test_admin.id),
-        "user_id": test_admin.id,
-        "max_user_id": test_admin.max_user_id,
-        "chat_id": test_admin.chat_id,
-    })
+    return create_access_token(
+        {
+            "sub": str(test_admin.id),
+            "user_id": test_admin.id,
+            "max_user_id": test_admin.max_user_id,
+            "chat_id": test_admin.chat_id,
+        }
+    )
 
 
 @pytest.fixture
-def auth_headers(test_token) -> dict:
+def auth_headers(test_token) -> dict[str, str]:
     """Заголовки с JWT токеном."""
     return {"Authorization": f"Bearer {test_token}"}
 
 
 @pytest.fixture
-def admin_headers(admin_token) -> dict:
+def admin_headers(admin_token) -> dict[str, str]:
     """Заголовки с JWT токеном администратора."""
     return {"Authorization": f"Bearer {admin_token}"}
 
 
 # ============ TIME FIXTURES ============
+
 
 @pytest.fixture
 def fixed_date():

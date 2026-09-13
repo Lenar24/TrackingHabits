@@ -10,21 +10,6 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgresql
-          POSTGRES_PASSWORD: postgresql
-          POSTGRES_DB: habit_tracker
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,27 +20,41 @@ jobs:
           python-version: '3.13'
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache poetry venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          poetry install --no-interaction --with dev
+        run: poetry install --no-interaction --no-ansi
 
-      - name: Check formatting (Black)
+      - name: Check formatting (black)
         run: poetry run black --check .
 
       - name: Check imports (isort)
         run: poetry run isort --check-only .
 
+      - name: Check lint (flake8)
+        run: poetry run flake8 .
+
       - name: Check types (mypy)
-        run: poetry run mypy . --no-error-summary
+        run: poetry run mypy .
 
       - name: Check code quality (pylint)
         run: poetry run pylint . --score=n
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://postgresql:postgresql@localhost:5432/habit_tracker
-        run: poetry run pytest -v --cov=backend --cov=bot --cov-report=term
+          ENVIRONMENT: development
+          SECRET_KEY: ci-test-secret-key
+          DATABASE_URL: sqlite:///:memory:
+        run: poetry run pytest -v --cov=backend --cov=bot --cov-report=term --cov-fail-under=40

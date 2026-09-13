@@ -84,18 +84,17 @@ async def health():
     """Эндпоинт для мониторинга состояния бота."""
     return {"status": "ok"}
 
+
 # ЗАПУСК
+
 
 async def set_webhook():
     """Регистрация вебхука в Max API."""
     url = "https://platform-api2.max.ru/subscriptions"
     headers = {"Authorization": f"{MAX_BOT_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "url": f"{WEBHOOK_URL}",
-        "events": ["message_created", "message_callback", "bot_started"]
-    }
+    payload = {"url": f"{WEBHOOK_URL}", "events": ["message_created", "message_callback", "bot_started"]}
 
-    async with httpx.AsyncClient(verify=False) as webhook_client: # В продакшене использовать verify=True
+    async with httpx.AsyncClient(verify=False) as webhook_client:  # В продакшене использовать verify=True
         response = await webhook_client.post(url, headers=headers, json=payload)
         if response.status_code == 200:
             logger.info("✅ Вебхук установлен: %s", WEBHOOK_URL)
@@ -108,7 +107,7 @@ async def main():
     await set_webhook()
     print("🚀 Бот запущен с Webhook!")
     print(f"📡 Webhook URL: {WEBHOOK_URL}")
-    print(f"🔑 База токенов: bot_tokens.db")
+    print("🔑 База токенов: bot_tokens.db")
     config = uvicorn.Config(app, host="0.0.0.0", port=8001, loop="asyncio")
     server = uvicorn.Server(config)
     await server.serve()

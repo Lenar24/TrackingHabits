@@ -2,7 +2,8 @@
 Модуль предоставляет асинхронный HTTP клиент для взаимодействия с бэкенд API.
 """
 
-from typing import Optional, Dict
+from typing import Any, Dict, Optional
+
 import httpx
 
 from ..core.config import settings
@@ -14,7 +15,7 @@ class APIClient:
     """
 
     def __init__(self):
-        # ✅ Безопасная конфигурация
+        # Безопасная конфигурация
         verify_ssl = settings.ENVIRONMENT != "development"
 
         self.client = httpx.AsyncClient(
@@ -33,7 +34,7 @@ class APIClient:
         """Очистка токена."""
         self._token = None
 
-    def _get_headers(self, headers: Optional[Dict] = None) -> Dict:
+    def _get_headers(self, headers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Формирование заголовков с автоматической подстановкой токена."""
         result = headers or {}
         result.setdefault("Content-Type", "application/json")
@@ -44,22 +45,13 @@ class APIClient:
         return result
 
     async def request(
-        self,
-        method: str,
-        endpoint: str,
-        headers: Optional[Dict] = None,
-        **kwargs
+        self, method: str, endpoint: str, headers: Optional[Dict[str, Any]] = None, **kwargs
     ) -> httpx.Response:
         """Универсальный метод для выполнения HTTP запросов."""
         url = f"{self.base_url}{endpoint}"
         request_headers = self._get_headers(headers)
 
-        return await self.client.request(
-            method,
-            url,
-            headers=request_headers,
-            **kwargs
-        )
+        return await self.client.request(method, url, headers=request_headers, **kwargs)
 
     async def get(self, endpoint: str, **kwargs) -> httpx.Response:
         """Выполнение GET запроса."""

@@ -4,11 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from backend.app.scheduler import (
-    _format_habits_message,
-    get_internal_token,
-    check_21_days_job,
-)
+from backend.app.scheduler import _format_habits_message, check_21_days_job, get_internal_token
 
 
 class TestScheduler:

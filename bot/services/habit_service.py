@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 from .api_client import APIClient
 from .auth_service import AuthService
@@ -15,12 +15,7 @@ logger = logging.getLogger(__name__)
 class HabitService:
     """Сервис для работы с привычками через бэкенд API."""
 
-    def __init__(
-        self,
-        client: Optional[APIClient] = None,
-        auth_service: Optional[AuthService] = None,
-        token_db=None
-    ):
+    def __init__(self, client: Optional[APIClient] = None, auth_service: Optional[AuthService] = None, token_db=None):
         self.client = client if client else APIClient()
         self.auth = auth_service
         self.token_db = token_db
@@ -36,11 +31,7 @@ class HabitService:
             return None
         return self.auth.get_token(user_id)
 
-    async def _ensure_token(
-        self,
-        user_id: int,
-        chat_id: Optional[int] = None
-    ) -> Optional[str]:
+    async def _ensure_token(self, user_id: int, chat_id: Optional[int] = None) -> Optional[str]:
         """Проверяет валидность токена, при необходимости обновляет."""
         if not self.auth:
             logger.error("❌ AuthService не установлен!")
@@ -50,6 +41,10 @@ class HabitService:
         if token:
             return token
 
+        if chat_id is None:
+            logger.error(f"❌ chat_id не передан для логина пользователя {user_id}")
+            return None
+
         logger.info(f"🔄 Получение токена для пользователя {user_id}")
         success = await self.auth.login(user_id, chat_id)
         if success:
@@ -58,24 +53,21 @@ class HabitService:
         logger.error(f"❌ Не удалось получить токен для пользователя {user_id}")
         return None
 
-    async def _request(
-        self,
-        method: str,
-        endpoint: str,
-        user_id: int,
-        chat_id: Optional[int] = None,
-        **kwargs
-    ):
+    async def _request(self, method: str, endpoint: str, user_id: int, chat_id: Optional[int] = None, **kwargs):
         """Выполняет HTTP запрос с JWT-токеном."""
         token = await self._ensure_token(user_id, chat_id)
         if not token:
+
             class ErrorResponse:
                 status_code = 401
+
                 def json(self):
                     return {"detail": "Authentication failed"}
+
                 @property
                 def text(self):
                     return '{"detail": "Authentication failed"}'
+
             return ErrorResponse()
 
         headers = kwargs.pop("headers", {})
@@ -87,7 +79,7 @@ class HabitService:
             logger.info(f"🔄 Токен истёк для пользователя {user_id}, обновляем...")
             self.auth.logout(user_id)
 
-            if await self.auth.login(user_id, chat_id):
+            if chat_id is not None and await self.auth.login(user_id, chat_id):
                 token = self.auth.get_token(user_id)
                 if token:
                     headers["Authorization"] = f"Bearer {token}"
@@ -96,102 +88,82 @@ class HabitService:
         return response
 
     async def get_or_create_user(
-        self,
-        user_id: int,
-        username: Optional[str] = None,
-        chat_id: Optional[int] = None
+        self, user_id: int, username: Optional[str] = None, chat_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """Получение или создание пользователя."""
         if not await self._ensure_token(user_id, chat_id):
             response = await self._request(
-                "POST", "/api/v1/users/", user_id, chat_id,
-                json={"user_id": user_id, "username": username, "chat_id": chat_id}
+                "POST",
+                "/api/v1/users/",
+                user_id,
+                chat_id,
+                json={"user_id": user_id, "username": username, "chat_id": chat_id},
             )
             if response.status_code in (200, 201):
-                return response.json()
+                data: dict[str, Any] = response.json()
+                return data
             return None
 
         response = await self._request("GET", "/api/v1/users/me", user_id, chat_id)
         if response.status_code in (200, 201):
-            return response.json()
+            data = response.json()
+            return data
         return None
 
     async def get_habits(
-        self,
-        user_id: int,
-        active_only: bool = True,
-        chat_id: Optional[int] = None
+        self, user_id: int, active_only: bool = True, chat_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Получение привычек пользователя."""
         url = f"/api/v1/habits?active_only={str(active_only).lower()}"
         response = await self._request("GET", url, user_id, chat_id)
         if response.status_code in (200, 201):
-            return response.json()
+            data: list[dict[str, Any]] = response.json()
+            return data
         return []
 
-    async def get_stats(
-        self,
-        user_id: int,
-        chat_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    async def get_stats(self, user_id: int, chat_id: Optional[int] = None) -> "dict[str, Any] | list[dict[str, Any]]":
         """Получение статистики привычек."""
         response = await self._request("GET", "/api/v1/stats/overall", user_id, chat_id)
         if response.status_code in (200, 201):
-            return response.json()
+            data: dict[str, Any] | list[dict[str, Any]] = response.json()
+            return data
         return []
 
-    async def add_habit(
-        self,
-        user_id: int,
-        name: str,
-        chat_id: Optional[int] = None
-    ) -> Optional[Dict[str, Any]]:
+    async def add_habit(self, user_id: int, name: str, chat_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """Создание новой привычки."""
         response = await self._request(
-            "POST", "/api/v1/habits/", user_id, chat_id,
-            json={"user_id": user_id, "name": name}
+            "POST", "/api/v1/habits/", user_id, chat_id, json={"user_id": user_id, "name": name}
         )
         if response.status_code in (200, 201):
-            return response.json()
+            data: dict[str, Any] = response.json()
+            return data
         return None
 
-    async def get_habit_name(
-        self,
-        habit_id: int,
-        user_id: int,
-        chat_id: Optional[int] = None
-    ) -> Optional[str]:
+    async def get_habit_name(self, habit_id: int, user_id: int, chat_id: Optional[int] = None) -> Optional[str]:
         """Получение названия привычки по ID."""
         response = await self._request("GET", f"/api/v1/habits/{habit_id}", user_id, chat_id)
         if response.status_code in (200, 201):
-            return response.json().get("name", "Без названия")
+            data: dict[str, Any] = response.json()
+            return str(data.get("name", "Без названия"))
         return None
 
     async def _check_habit_active(
-        self,
-        habit_id: int,
-        habit_name: str,
-        user_id: int,
-        chat_id: Optional[int] = None
-    ) -> tuple:
+        self, habit_id: int, habit_name: str, user_id: int, chat_id: Optional[int] = None
+    ) -> "tuple[Optional[dict[str, Any]], Optional[dict[str, str]]]":
         """Проверяет, активна ли привычка."""
         response = await self._request("GET", f"/api/v1/habits/{habit_id}", user_id, chat_id)
         if response.status_code not in (200, 201):
             return None, {"text": f"❌ Не удалось найти привычку **{habit_name}**."}
 
         # ✅ ИСПРАВЛЕНО: извлекаем данные из вложенного habit
-        result = response.json()
+        result: dict[str, Any] = response.json()
         habit = result.get("habit", result)
 
         if not habit.get("is_active", True):
-            return None, {
-                "text": f"ℹ️ Привычка **{habit_name}** уже завершена."
-            }
+            return None, {"text": f"ℹ️ Привычка **{habit_name}** уже завершена."}
         return habit, None
 
-    async def _handle_complete(
-        self, habit_id, habit_name, current_habit, user_id, chat_id=None
-    ) -> Dict[str, str]:
+    async def _handle_complete(self, habit_id, habit_name, current_habit, user_id, chat_id=None) -> Dict[str, str]:
         """Обрабатывает отметку выполнения привычки."""
         old_days = current_habit.get("days_completed", 0)
         response = await self._request("POST", f"/api/v1/habits/{habit_id}/complete", user_id, chat_id)
@@ -199,7 +171,7 @@ class HabitService:
         if response.status_code not in (200, 201):
             return {"text": "❌ Не удалось выполнить действие."}
 
-        # ✅ ИСПРАВЛЕНО: извлекаем данные из вложенного habit
+        # извлекаем данные из вложенного habit
         result = response.json()
         habit = result.get("habit", result)
         days = habit.get("days_completed", 0)
@@ -216,9 +188,7 @@ class HabitService:
             }
 
         text = (
-            f"✅ **Привычка выполнена!**\n\n"
-            f"📌 Привычка: **{habit_name}**\n"
-            f"📊 Прогресс: {days}/{max_days} дней"
+            f"✅ **Привычка выполнена!**\n\n" f"📌 Привычка: **{habit_name}**\n" f"📊 Прогресс: {days}/{max_days} дней"
         )
         if is_completed:
             text += f"\n🎉 **Поздравляю! Привычка сформирована через {max_days} дней!** 🏁"
@@ -282,11 +252,7 @@ class HabitService:
         }
 
     async def handle_habit_action(
-        self,
-        user_id: int,
-        habit_id: int,
-        action: str,
-        chat_id: Optional[int] = None
+        self, user_id: int, habit_id: int, action: str, chat_id: Optional[int] = None
     ) -> Dict[str, str]:
         """Обработка действий с привычкой."""
         habit_name = await self.get_habit_name(habit_id, user_id, chat_id)
@@ -294,7 +260,7 @@ class HabitService:
             return {"text": "❌ Не удалось найти привычку."}
 
         current_habit, error = await self._check_habit_active(habit_id, habit_name, user_id, chat_id)
-        if error:
+        if error is not None:
             return error
 
         if action == "complete":
@@ -310,6 +276,9 @@ class HabitService:
         """Принудительное обновление токена."""
         if self.auth:
             self.auth.logout(user_id)
+            if chat_id is None:
+                logger.warning(f"⚠️ refresh_token без chat_id для пользователя {user_id}")
+                return False
             return await self.auth.login(user_id, chat_id)
         return False
 
@@ -317,7 +286,7 @@ class HabitService:
         """Проверяет валидность токена."""
         return self.auth.is_token_valid(user_id) if self.auth else False
 
-    def get_token_info(self, user_id: int) -> Optional[Dict]:
+    def get_token_info(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Возвращает информацию о токене."""
         return self.auth.get_token_info(user_id) if self.auth else None
 

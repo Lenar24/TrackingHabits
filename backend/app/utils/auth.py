@@ -3,12 +3,12 @@
 """
 
 import logging
-from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt, ExpiredSignatureError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import ExpiredSignatureError, JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 
-def create_access_token(
-    data: dict,
-    expires_delta: Optional[timedelta] = None
-) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
     Создание JWT токена доступа.
 
@@ -36,24 +33,18 @@ def create_access_token(
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire, "type": "access"})
 
-    encoded_jwt = jwt.encode(
-        to_encode,
-        settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM
-    )
+    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     return encoded_jwt
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: dict[str, Any]) -> str:
     """
     Создание Refresh токена.
 
@@ -63,20 +54,16 @@ def create_refresh_token(data: dict) -> str:
     Returns:
         str: Refresh токен
     """
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = data.copy()
     to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-    return jwt.encode(
-        to_encode,
-        settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM
-    )
+    return encoded_jwt
 
 
 def get_current_user(
-        credentials: HTTPAuthorizationCredentials = Depends(security),
-        db: Session = Depends(get_db)
+    credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)
 ) -> User:
     """
     Получение текущего пользователя из JWT токена.
@@ -90,12 +77,7 @@ def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-            options={"verify_exp": True}
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_exp": True})
 
         token_type = payload.get("type")
         if token_type == "refresh":
@@ -121,9 +103,9 @@ def get_current_user(
 
         try:
             user_id = int(user_id_str)
-        except ValueError:
+        except ValueError as e:
             logger.warning(f"Invalid user_id format: {user_id_str}")
-            raise credentials_exception
+            raise credentials_exception from e
 
         user = db.query(User).filter(User.id == user_id).first()
 
@@ -137,29 +119,24 @@ def get_current_user(
 
         if not user.is_active:
             logger.warning(f"Inactive user: {user_id}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User account is inactive"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
 
         logger.debug(f"Authenticated user: {user_id}")
         return user
 
-    except ExpiredSignatureError:
-        logger.warning("Token has expired")
+    except ExpiredSignatureError as e:
+        logger.warning(f"Token has expired: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except JWTError as e:
         logger.warning(f"JWT validation error: {e}")
-        raise credentials_exception
+        raise credentials_exception from e
 
 
-def get_current_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Проверяет, что текущий пользователь является администратором.
 
@@ -174,18 +151,14 @@ def get_current_admin(
     """
     if not current_user.is_admin:
         logger.warning(f"Admin access denied for user {current_user.id}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     logger.debug(f"Admin access granted for user {current_user.id}")
     return current_user
 
 
 def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)
 ) -> Optional[User]:
     """
     Получение пользователя из токена (опционально).

@@ -13,7 +13,7 @@ packages = [
 python = "^3.13"
 
 # Web Framework
-fastapi = "^0.115.13"
+fastapi = "^0.118.1"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 
 # Database
@@ -31,7 +31,6 @@ python-dotenv = "^1.0.0"
 
 # JWT
 python-jose = {version = "^3.3.0", extras = ["cryptography"]}
-passlib = {version = "^1.7.4", extras = ["bcrypt"]}
 bcrypt = "^4.2.0"
 
 # Bot
@@ -65,6 +64,8 @@ isort = "^5.13.0"
 pylint = "^3.3.0"
 mypy = "^1.13.0"
 flake8 = "^7.0.0"
+ruff = "^0.8.0"
+flake8-pyproject = "^1.2.4"
 
 [build-system]
 requires = ["poetry-core"]
@@ -90,6 +91,7 @@ extend-exclude = '''
   | build
   | dist
   | migrations
+  | htmlcov
 )/
 '''
 
@@ -102,7 +104,7 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-skip = ["migrations", ".venv", "__pycache__"]
+skip = ["migrations", ".venv", "__pycache__", "htmlcov"]
 known_first_party = ["backend", "bot"]
 known_third_party = [
     "fastapi",
@@ -114,9 +116,28 @@ known_third_party = [
     "apscheduler",
 ]
 
-# PYLINT (ЕДИНЫЙ БЛОК!)
+# FLAKE8
+[tool.flake8]
+max-line-length = 120
+extend-ignore = [
+    "E203",  # whitespace before ':' — конфликт с black
+    "W503",  # line break before binary operator — конфликт с black
+    "E501",  # line too long — отдано на откуп black
+    "E712",  # comparison to True/False — ложное для SQLAlchemy filter()
+]
+exclude = [".venv", "migrations", "__pycache__", "htmlcov", ".git", ".mypy_cache", ".pytest_cache"]
+per-file-ignores = [
+    "__init__.py:F401",           # реэкспорты в __init__
+    "tests/*:F401,F811,F841",     # в тестах неиспользуемые импорты — норма
+    "backend/migrations/env.py:F401",  # импорты моделей для Alembic autogenerate
+]
+
+# PYLINT
 [tool.pylint.main]
-ignore = ["migrations", ".venv", "__pycache__"]
+ignore = ["migrations", ".venv", "__pycache__", "htmlcov"]
+py-version = "3.13"
+jobs = 0
+disable = ["no-self-argument"]
 
 [tool.pylint.messages_control]
 disable = [
@@ -132,27 +153,29 @@ disable = [
     # Warnings
     "W0718",  # broad-exception-caught
     "W1203",  # logging-fstring-interpolation
-    "W0611",  # unused-import
+#   "W0611",  # unused-import — ОСТАВЛЯЕМ ВКЛЮЧЁННЫМ (закомментировано)
     "W0621",  # redefined-outer-name
     "W0613",  # unused-argument
     # Conventions
-    "C0301",  # line-too-long
+#   "C0301",  # line-too-long — ОСТАВЛЯЕМ ВКЛЮЧЁННЫМ (см. max-line-length = 120)
     "C0415",  # import-outside-toplevel
-    "C0121",  # singleton-comparison
-    "C1805",  # use-implicit-booleaness-not-comparison-to-zero
+    "C0121",  # singleton-comparison — ложное для SQLAlchemy filter()
+#   "C1805",  # use-implicit-booleaness... — ОСТАВЛЯЕМ ВКЛЮЧЁННЫМ
     # Refactor
-    "R1731",  # consider-using-max-builtin
+#   "R1731",  # consider-using-max-builtin — ОСТАВЛЯЕМ ВКЛЮЧЁННЫМ
     # Errors (отключаем для ORM)
     "E1101",  # no-member
 ]
 
 [tool.pylint.basic]
-good-names = ["i", "j", "k", "ex", "db", "id", "pk", "e", "n", "x", "y"]
+good-names = ["i", "j", "k", "ex", "db", "id", "pk", "e", "n", "x", "y", "SessionLocal"]
 
 [tool.pylint.design]
 max-args = 7
 max-locals = 20
 max-attributes = 10
+max-branches = 15
+max-positional-arguments = 6
 
 [tool.pylint.typecheck]
 generated-members = ["_", "objects", "DoesNotExist", "MultipleObjectsReturned"]
@@ -161,6 +184,7 @@ generated-members = ["_", "objects", "DoesNotExist", "MultipleObjectsReturned"]
 max-line-length = 120
 
 # PYTEST
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = [

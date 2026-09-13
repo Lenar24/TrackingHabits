@@ -3,9 +3,8 @@
 Используется для отправки напоминаний через API.
 """
 
-import json
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 class KeyboardButton:
     """Класс для представления кнопки клавиатуры."""
 
-    def __init__(self, text: str, payload: str, button_type: str = "callback"):
+    def __init__(self, text: str, payload: str, button_type: str = "callback") -> None:
         self.text = text
         self.payload = payload
         self.type = button_type
@@ -30,11 +29,11 @@ class KeyboardButton:
 class InlineKeyboardBuilder:
     """Построитель инлайн-клавиатуры."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.buttons: List[KeyboardButton] = []
         self.row_width = 1
 
-    def add(self, text: str, payload: str, button_type: str = "callback") -> 'InlineKeyboardBuilder':
+    def add(self, text: str, payload: str, button_type: str = "callback") -> "InlineKeyboardBuilder":
         """
         Добавление кнопки.
 
@@ -49,7 +48,7 @@ class InlineKeyboardBuilder:
         self.buttons.append(KeyboardButton(text, payload, button_type))
         return self
 
-    def adjust(self, row_width: int) -> 'InlineKeyboardBuilder':
+    def adjust(self, row_width: int) -> "InlineKeyboardBuilder":
         """
         Установка ширины ряда.
 
@@ -75,7 +74,7 @@ class InlineKeyboardBuilder:
         # Разбиваем кнопки по рядам
         keyboard = []
         for i in range(0, len(self.buttons), self.row_width):
-            row = self.buttons[i:i + self.row_width]
+            row = self.buttons[i : i + self.row_width]
             keyboard.append([button.to_dict() for button in row])
 
         return {"buttons": keyboard}
@@ -88,7 +87,7 @@ class InlineKeyboardBuilder:
 
         keyboard = []
         for i in range(0, len(self.buttons), self.row_width):
-            row = self.buttons[i:i + self.row_width]
+            row = self.buttons[i : i + self.row_width]
             keyboard.append([button.to_dict() for button in row])
 
         return keyboard
@@ -131,14 +130,8 @@ def create_habit_keyboard(habit_id: int, habit_name: str) -> Dict[str, Any]:
         Dict: Клавиатура для привычки
     """
     builder = InlineKeyboardBuilder()
-    builder.add(
-        f"✅ Выполнить: {habit_name}",
-        f"complete_habit_{habit_id}"
-    )
-    builder.add(
-        f"⏭️ Пропустить: {habit_name}",
-        f"skip_habit_{habit_id}"
-    )
+    builder.add(f"✅ Выполнить: {habit_name}", f"complete_habit_{habit_id}")
+    builder.add(f"⏭️ Пропустить: {habit_name}", f"skip_habit_{habit_id}")
     builder.add("◀️ Назад", "back_to_habits")
     builder.adjust(1)
 

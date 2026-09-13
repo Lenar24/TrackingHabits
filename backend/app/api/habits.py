@@ -4,26 +4,25 @@
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from ..schemas import HabitCreate, HabitUpdate, HabitResponse, MessageResponse
+from ..models import Habit, User
+from ..schemas import HabitCreate, HabitResponse, HabitUpdate, MessageResponse
 from ..services import HabitService
-from ..utils.database import get_db
 from ..utils.auth import get_current_user
-from ..models import User, Habit
-from .dependencies import get_habit_or_404, get_active_habit
+from ..utils.database import get_db
+from .dependencies import get_active_habit, get_habit_or_404
 
 router = APIRouter()
 
 
 # ============ CRUD ОПЕРАЦИИ ============
 
+
 @router.post("/", response_model=HabitResponse, status_code=status.HTTP_201_CREATED)
 def create_habit(
-    habit_data: HabitCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    habit_data: HabitCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Создание новой привычки для текущего пользователя.
@@ -32,10 +31,7 @@ def create_habit(
         habit = HabitService.create_habit(db, current_user.id, habit_data)
         return habit
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/", response_model=List[HabitResponse])
@@ -44,25 +40,17 @@ def get_habits(
     skip: int = Query(0, ge=0, description="Количество пропускаемых записей"),
     limit: int = Query(100, ge=1, le=1000, description="Лимит записей"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Получение списка привычек текущего пользователя.
     """
-    habits = HabitService.get_habits(
-        db,
-        current_user.id,
-        active_only=active_only,
-        skip=skip,
-        limit=limit
-    )
+    habits = HabitService.get_habits(db, current_user.id, active_only=active_only, skip=skip, limit=limit)
     return habits
 
 
 @router.get("/{habit_id}", response_model=HabitResponse)
-def get_habit(
-    habit: Habit = Depends(get_habit_or_404)
-):
+def get_habit(habit: Habit = Depends(get_habit_or_404)):
     """
     Получение конкретной привычки по её ID.
     """
@@ -81,16 +69,10 @@ def update_habit(
     try:
         updated = HabitService.update_habit(db, habit.id, habit_update)
         if not updated:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Habit not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Habit not found")
         return updated
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.delete("/{habit_id}", response_model=MessageResponse)
@@ -103,14 +85,12 @@ def delete_habit(
     """
     success = HabitService.delete_habit(db, habit.id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Habit not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Habit not found")
     return MessageResponse(message="Habit deleted successfully")
 
 
 # ============ ДЕЙСТВИЯ С ПРИВЫЧКОЙ ============
+
 
 @router.post("/{habit_id}/complete")
 def complete_habit(
@@ -124,10 +104,7 @@ def complete_habit(
         result = HabitService.mark_completed(db, habit.id)
         return result
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.post("/{habit_id}/skip")
@@ -142,10 +119,7 @@ def skip_habit(
         result = HabitService.mark_skipped(db, habit.id)
         return result
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.post("/{habit_id}/complete-early")
@@ -160,13 +134,11 @@ def complete_habit_early(
         result = HabitService.complete_early(db, habit.id)
         return result
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 # ============ ДОПОЛНИТЕЛЬНЫЕ ЭНДПОИНТЫ ============
+
 
 @router.get("/{habit_id}/progress")
 def get_habit_progress(
@@ -222,10 +194,7 @@ def reset_habit(
         db.refresh(habit)
         return MessageResponse(message=result["message"])
 
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=result["message"]
-    )
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["message"])
 
 
 @router.post("/{habit_id}/activate", response_model=MessageResponse)
@@ -243,17 +212,11 @@ def activate_habit(
         db.refresh(habit)
         return MessageResponse(message=result["message"])
 
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=result["message"]
-    )
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["message"])
 
 
 @router.post("/check-21-days")
-def check_21_days_rule(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def check_21_days_rule(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Ручной запуск проверки привычек на достижение 21 дня.
     """

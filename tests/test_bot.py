@@ -2,9 +2,6 @@
 Тесты для бота.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-
 from bot.utils.formatters import format_habit_list, format_statistics
 from bot.utils.validators import validate_habit_name
 

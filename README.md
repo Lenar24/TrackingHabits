@@ -433,6 +433,10 @@ WEBHOOK_URL=https://your-domain.com/webhook
 
 ### Docker Compose (рекомендуется)
 ```
+# Cloudflare Tunnel
+cloudflared tunnel --url http://localhost:8001 --protocol http2
+.env WEBHOOK_URL= 
+
 # Запуск всех сервисов
 docker compose up -d
 
@@ -454,16 +458,16 @@ cd TrackingHabits
 docker compose up -d db
 ```
 
-Терминал 2: Backend
-```
-cd backend
-export DATABASE_URL=postgresql://postgresql:postgresql@localhost:5432/habit_tracker
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Терминал 3: Cloudflare Tunnel
+Терминал 2: Cloudflare Tunnel
 ```
 cloudflared tunnel --url http://localhost:8001 --protocol http2
+.env.local WEBHOOK_URL= 
+```
+
+Терминал 3: Backend
+```
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Терминал 4: Bot
@@ -800,6 +804,7 @@ TrackingHabits/
 │   │   ├── __init__.py
 │   │   ├── main.py              # Точка входа
 │   │   └── scheduler.py         # Планировщик
+|   |   |_  scheduler_runner.py  # Запуск планировщика в докер
 │   └── migrations/              # Alembic миграции
 │       ├── env.py
 │       ├── __init__.py
@@ -872,6 +877,7 @@ TrackingHabits/
 ├── docker-compose.yml           # Docker Compose
 ├── Dockerfile                   # Docker для backend
 ├── Dockerfile.bot               # Docker для bot
+|__ Dockerfile.scheduler         # Docker для scheduler
 ├── pyproject.toml               # Poetry конфиг
 ├── poetry.lock                  # Зависимости
 ├── mypy.ini                     # Mypy конфиг
@@ -1196,6 +1202,7 @@ poetry run black .              # Форматирование
 poetry run isort .              # Сортировка импортов
 poetry run mypy .               # Проверка типов
 poetry run pylint .             # Качество кода
+poetry run flake8 .             # Качество кода
 poetry run pytest -v            # Тесты
 ```
 ---

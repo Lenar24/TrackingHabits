@@ -5,22 +5,20 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
 from asyncio import Semaphore
-from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 import httpx
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from tenacity import retry, stop_after_attempt, wait_exponential
 from jose import jwt
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .core.config import settings
 from .services.habit_service import HabitService
 from .utils.database import SessionLocal
 from .utils.keyboards import create_main_keyboard_payload
-from .utils.auth import create_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +35,15 @@ logger.info(f"✅ API_URL: {API_URL}")
 semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
 
 
-def create_system_token(data: dict) -> str:
+def create_system_token(data: dict[str, Any]) -> str:
     """
     Создание системного токена (без истечения).
     Используется для внутренних вызовов планировщика.
     """
     to_encode = data.copy()
     to_encode.update({"type": "system"})
-    return jwt.encode(
-        to_encode,
-        settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM
-    )
+    encoded_jwt: str = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
 
 
 def get_http_client() -> httpx.AsyncClient:
@@ -61,7 +56,7 @@ def get_http_client() -> httpx.AsyncClient:
         timeout=httpx.Timeout(REMINDER_TIMEOUT),
         verify=verify_ssl,
         follow_redirects=True,
-        limits=httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
     )
 
 
@@ -74,25 +69,12 @@ def get_internal_token() -> str:
         return settings.INTERNAL_API_TOKEN
 
     # Создаем системный токен для сервисов
-    token_data = {
-        "sub": "system",
-        "user_id": 0,
-        "chat_id": 0,
-        "system": True
-    }
+    token_data = {"sub": "system", "user_id": 0, "chat_id": 0, "system": True}
     return create_system_token(token_data)
 
 
-@retry(
-    stop=stop_after_attempt(MAX_RETRIES),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    reraise=True
-)
-async def send_reminder_to_user(
-    user_id: int,
-    habits: List[Dict[str, Any]],
-    chat_id: int
-) -> bool:
+@retry(stop=stop_after_attempt(MAX_RETRIES), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+async def send_reminder_to_user(user_id: int, habits: List[Dict[str, Any]], chat_id: int) -> bool:
     """
     Отправляет напоминание одному пользователю с повторными попытками.
 
@@ -116,14 +98,8 @@ async def send_reminder_to_user(
 
             # Отправляем запрос
             url = f"https://platform-api2.max.ru/messages?chat_id={chat_id}"
-            headers = {
-                "Authorization": f"{settings.MAX_BOT_TOKEN}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "text": habits_text,
-                "attachments": [{"type": "inline_keyboard", "payload": keyboard}]
-            }
+            headers = {"Authorization": f"{settings.MAX_BOT_TOKEN}", "Content-Type": "application/json"}
+            payload = {"text": habits_text, "attachments": [{"type": "inline_keyboard", "payload": keyboard}]}
 
             logger.info(f"📤 Отправка напоминания пользователю {user_id} (chat_id: {chat_id})")
 
@@ -133,12 +109,12 @@ async def send_reminder_to_user(
                 if response.status_code == 200:
                     logger.info(f"✅ Напоминание отправлено пользователю {user_id}")
                     return True
-                else:
-                    logger.error(
-                        f"❌ Не удалось отправить напоминание пользователю {user_id}: "
-                        f"status={response.status_code}, response={response.text}"
-                    )
-                    return False
+
+                logger.error(
+                    f"❌ Не удалось отправить напоминание пользователю {user_id}: "
+                    f"status={response.status_code}, response={response.text}"
+                )
+                return False
 
         except httpx.TimeoutException:
             logger.error(f"⏱️ Истекло время ожидания отправки напоминания пользователю {user_id}")
@@ -161,19 +137,17 @@ def _format_habits_message(habits: List[Dict[str, Any]]) -> str:
     lines = ["📋 **Ваши привычки на сегодня:**", ""]
 
     for i, habit in enumerate(habits, 1):
-        name = habit.get('name', 'Без названия')
-        is_active = habit.get('is_active', True)
-        days = habit.get('days_completed', 0)
-        max_days = habit.get('max_days', 21)
+        name = habit.get("name", "Без названия")
+        is_active = habit.get("is_active", True)
+        days = habit.get("days_completed", 0)
+        max_days = habit.get("max_days", 21)
         status = "✅" if is_active else "❌"
 
         lines.append(f"{i}. {name} {status} ({days}/{max_days} дн.)")
 
-    lines.extend([
-        "",
-        "⚠️ Не забывайте отмечать выполнение привычек!",
-        "❤️ Для отметки выполнения нажмите кнопку ниже."
-    ])
+    lines.extend(
+        ["", "⚠️ Не забывайте отмечать выполнение привычек!", "❤️ Для отметки выполнения нажмите кнопку ниже."]
+    )  # pylint: disable=line-too-long
 
     return "\n".join(lines)
 
@@ -189,10 +163,7 @@ async def get_users_with_habits() -> List[Dict[str, Any]]:
 
         async with get_http_client() as client:
             # Получаем всех пользователей
-            users_response = await client.get(
-                f"{API_URL}/api/v1/users/",
-                headers=headers
-            )
+            users_response = await client.get(f"{API_URL}/api/v1/users/", headers=headers)
 
             if users_response.status_code != 200:
                 logger.error(f"❌ Не удалось получить пользователей: {users_response.text}")
@@ -217,22 +188,22 @@ async def get_users_with_habits() -> List[Dict[str, Any]]:
 
                 # Получаем привычки пользователя
                 habits_response = await client.get(
-                    f"{API_URL}/api/v1/habits/",
-                    params={"user_id": user_id, "active_only": True},
-                    headers=headers
+                    f"{API_URL}/api/v1/habits/", params={"user_id": user_id, "active_only": True}, headers=headers
                 )
 
                 if habits_response.status_code == 200:
                     habits = habits_response.json()
                     if habits:
-                        result.append({
-                            "user_id": user_id,
-                            "max_user_id": max_user_id,
-                            "chat_id": chat_id,
-                            "username": username,
-                            "habits": habits,
-                            "habit_count": len(habits)
-                        })
+                        result.append(
+                            {
+                                "user_id": user_id,
+                                "max_user_id": max_user_id,
+                                "chat_id": chat_id,
+                                "username": username,
+                                "habits": habits,
+                                "habit_count": len(habits),
+                            }
+                        )
 
             logger.info(f"📊 Найдены {len(result)} пользователей с активными привычками")
             return result
@@ -269,12 +240,7 @@ async def send_daily_reminders() -> Dict[str, Any]:
 
     # Отправляем напоминания параллельно
     tasks = [
-        send_reminder_to_user(
-            user_data["user_id"],
-            user_data["habits"],
-            user_data["chat_id"]
-        )
-        for user_data in users
+        send_reminder_to_user(user_data["user_id"], user_data["habits"], user_data["chat_id"]) for user_data in users
     ]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -285,12 +251,7 @@ async def send_daily_reminders() -> Dict[str, Any]:
 
     logger.info(f"✅ Напоминания отправлены: {successful} успешно, {failed} неуспешно")
 
-    return {
-        "total": len(users),
-        "successful": successful,
-        "failed": failed,
-        "users": users
-    }
+    return {"total": len(users), "successful": successful, "failed": failed, "users": users}
 
 
 def check_21_days_job() -> Dict[str, Any]:
@@ -349,7 +310,7 @@ def start_scheduler() -> BackgroundScheduler:
         replace_existing=True,
         name="Утренние напоминания в 9:00",
         max_instances=1,
-        misfire_grace_time=3600  # 1 час на восстановление
+        misfire_grace_time=3600,  # 1 час на восстановление
     )
     logger.info("⏰ Добавлено утреннее напоминание в 9:00 по московскому времени")
 
@@ -361,21 +322,21 @@ def start_scheduler() -> BackgroundScheduler:
         replace_existing=True,
         name="Вечерние напоминания в 21:00",
         max_instances=1,
-        misfire_grace_time=3600
+        misfire_grace_time=3600,
     )
     logger.info("⏰ Добавлено вечернее напоминание в 21:00 по московскому времени")
 
     # 3. Тестовое напоминание
     # scheduler.add_job(
     #     job_function,
-    #     trigger=CronTrigger(hour=21, minute=15, timezone=MOSCOW_TZ),
-    #     id="test_reminder_21_15",
+    #     trigger=CronTrigger(hour=17, minute=17, timezone=MOSCOW_TZ),
+    #     id="test_reminder_17_17",
     #     replace_existing=True,
-    #     name="Тестовое напоминание в 21:15",
+    #     name="Тестовое напоминание в 17:17",
     #     max_instances=1,
     #     misfire_grace_time=3600  # 1 час на восстановление
     # )
-    # logger.info("⏰ Добавлено тестовое напоминание в 21:15 по московскому времени")
+    # logger.info("⏰ Добавлено тестовое напоминание в 17:17 по московскому времени")
 
     # 3. Проверка правила 21 дня (каждый день в полночь + 5 минут)
     scheduler.add_job(
@@ -385,7 +346,7 @@ def start_scheduler() -> BackgroundScheduler:
         replace_existing=True,
         name="Правило 21 дня",
         max_instances=1,
-        misfire_grace_time=3600
+        misfire_grace_time=3600,
     )
     logger.info("⏰ Добавлена проверка правила 21 дня в 00:05 по московскому времени")
 
@@ -421,11 +382,7 @@ async def send_test_reminder(user_id: int, chat_id: int) -> bool:
         logger.warning(f"⚠️ Пользователь {user_id} не найден или не имеет привычек")
         return False
 
-    return await send_reminder_to_user(
-        user_id,
-        user_data["habits"],
-        chat_id or user_data["chat_id"]
-    )
+    return await send_reminder_to_user(user_id, user_data["habits"], chat_id or user_data["chat_id"])
 
 
 async def run_reminder_now() -> Dict[str, Any]:

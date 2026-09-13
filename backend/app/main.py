@@ -4,25 +4,26 @@
 """
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, HTTPException, status, Depends
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .api import habits_router, users_router, stats_router, reminders_router
+from .api import habits_router, reminders_router, stats_router, users_router
 from .api.auth import router as auth_router
 from .core.config import settings
 from .core.logging_config import setup_logging
+from .models import User
 from .scheduler import start_scheduler
 from .services.habit_service import HabitService
-from .utils.database import init_db, get_db
 from .utils.auth import get_current_admin
-from .models import User
+from .utils.database import get_db, init_db
 
 # Настройка логирования
 setup_logging()
@@ -46,16 +47,17 @@ async def lifespan(_app: FastAPI):
         logger.error(f"❌ Не удалось инициализировать базу данных: {e}")
         raise
 
-    # Запуск планировщика
-    try:
-        scheduler = start_scheduler()
-        _app.state.scheduler = scheduler
-        logger.info("✅ Планировщик запущен")
-    except Exception as e:
-        logger.error(f"❌ Не удалось запустить планировщик: {e}")
-        # Продолжаем работу без планировщика
-
-    logger.info("✅ Приложение успешно запущено")
+    # Запуск планировщика только если разрешено
+    scheduler_enabled = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
+    if scheduler_enabled:
+        try:
+            scheduler = start_scheduler()
+            _app.state.scheduler = scheduler
+            logger.info("✅ Планировщик запущен")
+        except Exception as e:
+            logger.error(f"❌ Не удалось запустить планировщик: {e}")
+    else:
+        logger.info("⏭️ Планировщик отключён (SCHEDULER_ENABLED=false)")
 
     yield
 
@@ -119,17 +121,14 @@ async def log_requests(request: Request, call_next):
 
     # Логируем ответ
     process_time = time.time() - start_time
-    logger.info(
-        f"{request.method} {request.url.path} "
-        f"status={response.status_code} "
-        f"time={process_time:.3f}s"
-    )
+    logger.info(f"{request.method} {request.url.path} " f"status={response.status_code} " f"time={process_time:.3f}s")
 
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
 
 # Глобальные обработчики исключений
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -166,10 +165,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     """
     Обработчик всех непредвиденных исключений.
     """
-    logger.error(
-        f"Необработанное исключение {request.url.path}: {exc}",
-        exc_info=True
-    )
+    logger.error(f"Необработанное исключение {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -205,6 +201,7 @@ app.include_router(reminders_router, prefix=f"{API_PREFIX}/reminders", tags=["re
 
 
 # Корневые эндпоинты
+
 
 @app.get("/")
 async def read_root():
@@ -251,6 +248,7 @@ async def api_info():
 
 
 # Административные эндпоинты
+
 
 @app.get("/api/v1/admin/stats")
 async def admin_stats(

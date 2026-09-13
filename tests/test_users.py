@@ -2,8 +2,6 @@
 Тесты для пользователей.
 """
 
-import pytest
-
 
 class TestUsers:
     """Тесты пользователей."""
@@ -18,11 +16,7 @@ class TestUsers:
     def test_update_chat_id(self, client, auth_headers, test_user):
         """Обновление chat_id."""
         new_chat_id = 111222
-        response = client.put(
-            "/api/v1/users/me/chat-id",
-            headers=auth_headers,
-            params={"chat_id": new_chat_id}
-        )
+        response = client.put("/api/v1/users/me/chat-id", headers=auth_headers, params={"chat_id": new_chat_id})
         assert response.status_code == 200
 
     def test_get_all_users_admin(self, client, admin_headers):
