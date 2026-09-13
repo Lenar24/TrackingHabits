@@ -54,7 +54,7 @@ jobs:
 
       - name: Run tests
         env:
-          ENVIRONMENT: development
-          SECRET_KEY: ci-test-secret-key
-          DATABASE_URL: sqlite:///:memory:
+          ENVIRONMENT: "development"
+          SECRET_KEY: "ci-test-secret-key"
+          DATABASE_URL: "sqlite:///:memory:"
         run: poetry run pytest -v --cov=backend --cov=bot --cov-report=term --cov-fail-under=40
