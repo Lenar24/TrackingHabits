@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
+[![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
 [![Pylint](https://img.shields.io/badge/pylint-10.00%2F10-brightgreen)](https://github.com/Lenar24/TrackingHabits)
 [![Mypy](https://img.shields.io/badge/mypy-passing-brightgreen)](https://github.com/Lenar24/TrackingHabits)
 [![Tests](https://img.shields.io/badge/tests-59%20passed-brightgreen)](https://github.com/Lenar24/TrackingHabits)
@@ -756,7 +756,7 @@ jobs:
 ```
 
 Badges статуса:<br>
-[![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
+[![CI - Code Check](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Lenar24/TrackingHabits/actions/workflows/ci.yml)
 
 ---
 
