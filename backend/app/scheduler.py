@@ -329,16 +329,16 @@ def start_scheduler() -> BackgroundScheduler:
     # 3. Тестовое напоминание
     # scheduler.add_job(
     #     job_function,
-    #     trigger=CronTrigger(hour=17, minute=17, timezone=MOSCOW_TZ),
-    #     id="test_reminder_17_17",
+    #     trigger=CronTrigger(hour=23, minute=45, timezone=MOSCOW_TZ),
+    #     id="test_reminder_23_45",
     #     replace_existing=True,
-    #     name="Тестовое напоминание в 17:17",
+    #     name="Тестовое напоминание в 23:45",
     #     max_instances=1,
     #     misfire_grace_time=3600  # 1 час на восстановление
     # )
-    # logger.info("⏰ Добавлено тестовое напоминание в 17:17 по московскому времени")
+    # logger.info("⏰ Добавлено тестовое напоминание в 23:45 по московскому времени")
 
-    # 3. Проверка правила 21 дня (каждый день в полночь + 5 минут)
+    # 4. Проверка правила 21 дня (каждый день в полночь + 5 минут)
     scheduler.add_job(
         check_21_days_job,
         trigger=CronTrigger(hour=0, minute=5, timezone=MOSCOW_TZ),
