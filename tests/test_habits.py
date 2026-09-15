@@ -223,3 +223,74 @@ class TestProgressAndStreak:
         assert response.status_code == 200
         data = response.json()
         assert "streak" in data
+
+
+class TestHabitLogs:
+    """Тесты создания записей в habit_logs."""
+
+    def test_complete_creates_log(self, client, auth_headers, test_habit, db_session):
+        """Отметка выполнения создаёт HabitLog с completed=True."""
+        response = client.post(
+            f"/api/v1/habits/{test_habit.id}/complete",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+        from backend.app.models import HabitLog
+
+        logs = (
+            db_session.query(HabitLog)
+            .filter(
+                HabitLog.habit_id == test_habit.id,
+                HabitLog.date == date.today(),
+            )
+            .all()
+        )
+        assert len(logs) == 1
+        assert logs[0].completed is True
+
+    def test_skip_creates_log(self, client, auth_headers, test_habit, db_session):
+        """Отметка пропуска создаёт HabitLog с completed=False."""
+        response = client.post(
+            f"/api/v1/habits/{test_habit.id}/skip",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        from backend.app.models import HabitLog
+
+        logs = (
+            db_session.query(HabitLog)
+            .filter(
+                HabitLog.habit_id == test_habit.id,
+                HabitLog.date == date.today(),
+            )
+            .all()
+        )
+        assert len(logs) == 1
+        assert logs[0].completed is False
+
+    def test_complete_creates_only_one_log_per_day(self, client, auth_headers, test_habit, db_session):
+        """Двойное выполнение в один день создаёт только одну запись."""
+        from backend.app.models import HabitLog
+
+        # Первое выполнение
+        client.post(f"/api/v1/habits/{test_habit.id}/complete", headers=auth_headers)
+
+        # Второе выполнение — должно вернуть success=False и не создать дубль
+        response = client.post(
+            f"/api/v1/habits/{test_habit.id}/complete",
+            headers=auth_headers,
+        )
+        assert response.json()["success"] is False
+
+        logs = (
+            db_session.query(HabitLog)
+            .filter(
+                HabitLog.habit_id == test_habit.id,
+                HabitLog.date == date.today(),
+            )
+            .all()
+        )
+        assert len(logs) == 1

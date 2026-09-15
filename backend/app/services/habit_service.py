@@ -243,26 +243,23 @@ class HabitService:
         """
         Отметка выполнения привычки за сегодня.
         Использует метод complete_today() модели Habit.
-
-        Args:
-            db: Сессия базы данных
-            habit_id: ID привычки
-
-        Returns:
-            Dict: Результат операции
-
-        Raises:
-            ValueError: Если привычка не найдена
         """
         habit = HabitService.get_habit(db, habit_id)
         if not habit:
             raise ValueError("Привычка не найдена")
 
         try:
-            # Используем бизнес-логику модели
+            # Бизнес-логика модели
             result = habit.complete_today()
 
             if result["success"]:
+                # Создать запись в habit_logs (если ещё нет)
+                today = date.today()
+                existing_log = db.query(HabitLog).filter(HabitLog.habit_id == habit_id, HabitLog.date == today).first()
+                if not existing_log:
+                    log = HabitLog(habit_id=habit_id, date=today, completed=True)
+                    db.add(log)
+
                 db.commit()
                 db.refresh(habit)
                 logger.info(f"✅ Выполнена привычка {habit_id}: {result['progress']}")
@@ -278,29 +275,22 @@ class HabitService:
 
     @staticmethod
     def mark_skipped(db: Session, habit_id: int) -> Dict[str, Any]:
-        """
-        Отметка пропуска выполнения привычки.
-        Использует метод skip_today() модели Habit.
-
-        Args:
-            db: Сессия базы данных
-            habit_id: ID привычки
-
-        Returns:
-            Dict: Результат операции
-
-        Raises:
-            ValueError: Если привычка не найдена
-        """
+        """Отметка пропуска выполнения привычки."""
         habit = HabitService.get_habit(db, habit_id)
         if not habit:
             raise ValueError("Привычка не найдена")
 
         try:
-            # Используем бизнес-логику модели
             result = habit.skip_today()
 
             if result["success"]:
+                # ✅ Создать запись о пропуске
+                today = date.today()
+                existing_log = db.query(HabitLog).filter(HabitLog.habit_id == habit_id, HabitLog.date == today).first()
+                if not existing_log:
+                    log = HabitLog(habit_id=habit_id, date=today, completed=False)
+                    db.add(log)
+
                 db.commit()
                 db.refresh(habit)
                 logger.info(f"✅ Пропущена привычка {habit_id}")
@@ -464,6 +454,19 @@ class HabitService:
                 else:
                     streak = 0
 
+            # Последние 7 дней — для поля last_7_days в схеме HabitStats
+            today = date.today()
+            log_by_date = {log.date: log.completed for log in logs}
+            last_7_days = []
+            for i in range(6, -1, -1):
+                day = today - timedelta(days=i)
+                last_7_days.append(
+                    {
+                        "date": day,
+                        "completed": log_by_date.get(day, False),
+                    }
+                )
+
             return {
                 "habit_id": habit.id,
                 "name": habit.name,
@@ -483,6 +486,7 @@ class HabitService:
                 "completed_at": habit.completed_at,
                 "completed_early": habit.completed_early,
                 "completion_rate": (completed_logs / total_logs * 100) if total_logs > 0 else 0,
+                "last_7_days": last_7_days,
             }
 
         except SQLAlchemyError as e:

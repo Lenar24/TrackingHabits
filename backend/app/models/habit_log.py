@@ -2,7 +2,7 @@
 Модель HabitLog представляет ежедневный лог выполнения привычки.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, UniqueConstraint
@@ -27,9 +27,7 @@ class HabitLog(BaseModel):
     )
 
     # Данные
-    date: Mapped[date] = mapped_column(
-        Date, default=lambda: datetime.now(timezone.utc).date(), nullable=False, index=True  # ✅ Python время
-    )
+    date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False, index=True)  # ✅ Python время
     completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Связи
