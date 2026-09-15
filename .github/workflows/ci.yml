@@ -1,0 +1,60 @@
+name: CI - Code Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache poetry venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Check formatting (black)
+        run: poetry run black --check .
+
+      - name: Check imports (isort)
+        run: poetry run isort --check-only .
+
+      - name: Check lint (flake8)
+        run: poetry run flake8 .
+
+      - name: Check types (mypy)
+        run: poetry run mypy .
+
+      - name: Check code quality (pylint)
+        run: poetry run pylint . --score=n
+
+      - name: Run tests
+        env:
+          ENVIRONMENT: "development"
+          SECRET_KEY: "ci-test-secret-key"
+          DATABASE_URL: "sqlite:///:memory:"
+        run: poetry run pytest -v --cov=backend --cov=bot --cov-report=term --cov-fail-under=40
